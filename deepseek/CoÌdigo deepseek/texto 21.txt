@@ -1,0 +1,29 @@
+import { auditMiddleware } from './middlewares/audit.middleware';
+import { initializeLicense } from './middlewares/license-initializer.middleware';
+import licenseRoutes from './routes/license.routes';
+import hrRoutes from './routes/hr.routes';
+import manufacturingRoutes from './routes/manufacturing.routes';
+import logisticsRoutes from './routes/logistics.routes';
+import treasuryRoutes from './routes/treasury.routes';
+import uploadRoutes from './routes/upload.routes';
+import path from 'path';
+
+const app = express();
+app.use(express.json());
+
+// Servir archivos estáticos de uploads
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+// Middleware de auditoría forense (DEBE ir antes de las rutas)
+app.use(auditMiddleware);
+
+// Inicializar licencia al arrancar
+initializeLicense();
+
+// Rutas Enterprise
+app.use(licenseRoutes);
+app.use(hrRoutes);
+app.use(manufacturingRoutes);
+app.use(logisticsRoutes);
+app.use(treasuryRoutes);
+app.use(uploadRoutes);

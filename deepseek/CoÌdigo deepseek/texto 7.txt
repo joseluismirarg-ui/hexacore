@@ -1,0 +1,41 @@
+import { Router } from 'express';
+import { HRController } from '../controllers/hr.controller';
+import { authenticate } from '../middlewares/auth.middleware';
+import { authorize } from '../middlewares/authorize.middleware';
+import { requireModule } from '../middlewares/license-initializer.middleware';
+
+const router = Router();
+
+router.post(
+  '/api/hr/employee',
+  authenticate,
+  authorize(['SUPER_ADMIN', 'ADMIN', 'RH']),
+  requireModule('hrActive'),
+  HRController.createEmployee
+);
+
+router.get(
+  '/api/hr/employees',
+  authenticate,
+  authorize(['SUPER_ADMIN', 'ADMIN', 'RH']),
+  requireModule('hrActive'),
+  HRController.getEmployees
+);
+
+router.get(
+  '/api/hr/employee/:id',
+  authenticate,
+  authorize(['SUPER_ADMIN', 'ADMIN', 'RH']),
+  requireModule('hrActive'),
+  HRController.getEmployeeById
+);
+
+router.put(
+  '/api/hr/employee/:id/salary',
+  authenticate,
+  authorize(['SUPER_ADMIN', 'ADMIN', 'RH']),
+  requireModule('hrActive'),
+  HRController.updateSalary
+);
+
+export default router;

@@ -1,0 +1,167 @@
+import { Request, Response, NextFunction } from 'express';
+import { PrismaClient } from '@prisma/client';
+import { StringMath } from '../utils/string-math.utils';
+
+const prisma = new PrismaClient();
+
+export class TreasuryController {
+  /**
+   * POST /api/treasury/account
+   * Crear cuenta bancaria
+   */
+  static async createAccount(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { bankName, accountNumber, initialBalance } = req.body;
+
+      if (!bankName?.trim() || !accountNumber?.trim()) {
+        res.status(400).json({ error: 'bankName y accountNumber son requeridos' });
+        return;
+      }
+
+      const balanceString = (initialBalance?.toString() || '0.00').trim();
+
+      const account = await prisma.bankAccount.create({
+        data: {
+          bankName: bankName.trim(),
+          accountNumber: accountNumber.trim(),
+          currentBalance: balanceString,
+        },
+      });
+
+      res.status(201).json(account);
+    } catch (error: any) {
+      if (error?.code === 'P2002') {
+        res.status(409).json({ error: 'Número de cuenta ya registrado' });
+        return;
+      }
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/treasury/accounts
+   */
+  static async getAccounts(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const accounts = await prisma.bankAccount.findMany({
+        include: {
+          movements: {
+            orderBy: { createdAt: 'desc' },
+            take: 50,
+          },
+        },
+      });
+
+      res.json(accounts);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/treasury/movement
+   * Registrar movimiento bancario y actualizar saldo automáticamente
+   * String Math para precisión contable
+   */
+  static async createMovement(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { bankAccountId, type, amount, concept } = req.body;
+
+      if (!bankAccountId?.trim() || !type?.trim() || !amount?.toString().trim()) {
+        res.status(400).json({ error: 'bankAccountId, type y amount son requeridos' });
+        return;
+      }
+
+      if (!['DEPOSITO', 'RETIRO', 'TRANSFERENCIA', 'COMISION', 'INTERES'].includes(type)) {
+        res.status(400).json({
+          error: 'type debe ser: DEPOSITO, RETIRO, TRANSFERENCIA, COMISION o INTERES',
+        });
+        return;
+      }
+
+      const amountString = amount.toString().trim();
+
+      // Validar que el monto sea positivo
+      if (!StringMath.isPositive(amountString) && !StringMath.isZero(amountString)) {
+        res.status(400).json({ error: 'amount debe ser un valor positivo' });
+        return;
+      }
+
+      // Obtener cuenta
+      const account = await prisma.bankAccount.findUnique({
+        where: { id: bankAccountId },
+      });
+
+      if (!account) {
+        res.status(404).json({ error: 'Cuenta bancaria no encontrada' });
+        return;
+      }
+
+      // Determinar si suma o resta
+      const isCredit = ['DEPOSITO', 'INTERES'].includes(type);
+      const isDebit = ['RETIRO', 'TRANSFERENCIA', 'COMISION'].includes(type);
+
+      let newBalance: string;
+
+      if (isCredit) {
+        newBalance = StringMath.add(account.currentBalance, amountString);
+      } else if (isDebit) {
+        // Verificar saldo suficiente
+        if (StringMath.compare(account.currentBalance, amountString) < 0) {
+          res.status(400).json({
+            error: 'Saldo insuficiente',
+            currentBalance: account.currentBalance,
+            required: amountString,
+          });
+          return;
+        }
+        newBalance = StringMath.subtract(account.currentBalance, amountString);
+      } else {
+        res.status(400).json({ error: 'Tipo de movimiento no válido para cálculo de saldo' });
+        return;
+      }
+
+      // Transacción atómica: crear movimiento + actualizar saldo
+      const result = await prisma.$transaction(async (tx) => {
+        const movement = await tx.bankMovement.create({
+          data: {
+            bankAccountId,
+            type,
+            amount: amountString,
+            concept: concept?.trim() || type,
+          },
+        });
+
+        const updatedAccount = await tx.bankAccount.update({
+          where: { id: bankAccountId },
+          data: { currentBalance: newBalance },
+        });
+
+        return { movement, account: updatedAccount };
+      });
+
+      res.status(201).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/treasury/movements/:accountId
+   */
+  static async getMovements(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { accountId } = req.params;
+
+      const movements = await prisma.bankMovement.findMany({
+        where: { bankAccountId: accountId },
+        include: { account: true },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      res.json(movements);
+    } catch (error) {
+      next(error);
+    }
+  }
+}

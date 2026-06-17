@@ -1,0 +1,33 @@
+import React from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
+
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+  requiredRole?: string[];
+}
+
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
+  children, 
+  requiredRole 
+}) => {
+  const location = useLocation();
+  const token = localStorage.getItem('token');
+  const userStr = localStorage.getItem('user');
+  
+  if (!token) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (requiredRole && userStr) {
+    try {
+      const user = JSON.parse(userStr);
+      if (!requiredRole.includes(user?.role)) {
+        return <Navigate to="/unauthorized" replace />;
+      }
+    } catch {
+      return <Navigate to="/login" replace />;
+    }
+  }
+
+  return <>{children}</>;
+};

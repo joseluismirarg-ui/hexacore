@@ -1,0 +1,22 @@
+Ruta,Propósito
+src/utils/string-math.utils.ts,Operaciones matemáticas con Strings para precisión contable
+src/middlewares/license-initializer.middleware.ts,Inicializador Fail-Safe + middleware verificación módulo
+src/middlewares/audit.middleware.ts,Middleware auditoría forense + código interceptor Axios
+src/config/multer.config.ts,Configuración de multer para subida de logotipos
+src/controllers/license.controller.ts,Controlador licenciamiento SUPER_ADMIN
+src/routes/license.routes.ts,Rutas de licenciamiento
+src/controllers/hr.controller.ts,Controlador RRHH (crear empleado transaccional)
+src/routes/hr.routes.ts,Rutas de RRHH
+src/controllers/manufacturing.controller.ts,Controlador manufactura (BOM + órdenes producción)
+src/routes/manufacturing.routes.ts,Rutas de manufactura
+src/controllers/logistics.controller.ts,Controlador logística (traspasos + recepción)
+src/routes/logistics.routes.ts,Rutas de logística
+src/controllers/treasury.controller.ts,Controlador tesorería (movimientos + String Math)
+src/routes/treasury.routes.ts,Rutas de tesorería
+src/routes/upload.routes.ts,Ruta de subida de logotipos
+src/middlewares/authorize.middleware.ts,Middleware de autorización por roles
+frontend/src/utils/axios-instance.ts,Instancia Axios con interceptores 401
+frontend/src/hooks/useSafeData.ts,Hook protección undefined en mapeos
+frontend/src/components/ui/ErrorMessage.tsx,Componente mensaje de error
+frontend/src/components/ui/LoadingSpinner.tsx,Componente spinner de carga
+frontend/src/components/ProtectedRoute.tsx,Componente ruta protegida

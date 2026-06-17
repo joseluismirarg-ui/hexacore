@@ -1,0 +1,50 @@
+import { Router, Request, Response, NextFunction } from 'express';
+import { uploadLogo } from '../config/multer.config';
+import { authenticate } from '../middlewares/auth.middleware';
+import { authorize } from '../middlewares/authorize.middleware';
+import path from 'path';
+
+const router = Router();
+
+/**
+ * POST /api/upload/logo
+ * Subir logotipo personalizado
+ */
+router.post(
+  '/api/upload/logo',
+  authenticate,
+  authorize(['SUPER_ADMIN', 'ADMIN']),
+  (req: Request, res: Response, next: NextFunction) => {
+    uploadLogo.single('logo')(req, res, (err) => {
+      if (err) {
+        if (err.message.includes('Solo se permiten imágenes')) {
+          res.status(400).json({ error: err.message });
+          return;
+        }
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          res.status(400).json({ error: 'El archivo no debe superar los 5MB' });
+          return;
+        }
+        res.status(500).json({ error: 'Error al subir archivo' });
+        return;
+      }
+
+      if (!req.file) {
+        res.status(400).json({ error: 'No se proporcionó ningún archivo' });
+        return;
+      }
+
+      const fileUrl = `/uploads/${req.file.filename}`;
+
+      res.status(200).json({
+        message: 'Logo subido exitosamente',
+        filename: req.file.filename,
+        url: fileUrl,
+        size: req.file.size,
+        mimetype: req.file.mimetype,
+      });
+    });
+  }
+);
+
+export default router;

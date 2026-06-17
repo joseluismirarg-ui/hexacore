@@ -1,0 +1,32 @@
+import { useMemo } from 'react';
+
+/**
+ * Hook para protección contra undefined en mapeos de React
+ * Uso: const safeData = useSafeData(datos);
+ */
+export function useSafeData<T>(data: T[] | undefined | null): T[] {
+  return useMemo(() => data || [], [data]);
+}
+
+/**
+ * Función utilitaria para mapeo seguro sin hook
+ */
+export function safeMap<T, R>(
+  data: T[] | undefined | null,
+  callback: (item: T, index: number) => R
+): R[] {
+  return (data || []).map(callback);
+}
+
+/**
+ * Acceso seguro a propiedad anidada con encadenamiento opcional
+ */
+export function safeAccess<T>(obj: any, path: string, defaultValue: T): T {
+  const keys = path.split('.');
+  let result = obj;
+  for (const key of keys) {
+    if (result == null) return defaultValue;
+    result = result[key];
+  }
+  return result ?? defaultValue;
+}

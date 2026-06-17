@@ -1,0 +1,272 @@
+import { Request, Response, NextFunction } from 'express';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+export class LogisticsController {
+  /**
+   * POST /api/logistics/transfer
+   * Crear traspaso entre almacenes
+   */
+  static async createTransfer(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { code, originId, destinationId, items } = req.body;
+
+      if (!originId?.trim() || !destinationId?.trim()) {
+        res.status(400).json({ error: 'originId y destinationId son requeridos' });
+        return;
+      }
+
+      if (originId === destinationId) {
+        res.status(400).json({ error: 'Origen y destino no pueden ser el mismo almacén' });
+        return;
+      }
+
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        res.status(400).json({ error: 'items debe ser un array con al menos un elemento' });
+        return;
+      }
+
+      // Verificar almacenes
+      const [origin, destination] = await Promise.all([
+        prisma.warehouse.findUnique({ where: { id: originId } }),
+        prisma.warehouse.findUnique({ where: { id: destinationId } }),
+      ]);
+
+      if (!origin) {
+        res.status(404).json({ error: 'Almacén origen no encontrado' });
+        return;
+      }
+
+      if (!destination) {
+        res.status(404).json({ error: 'Almacén destino no encontrado' });
+        return;
+      }
+
+      // Verificar stock disponible en origen
+      const stockIssues: string[] = [];
+      for (const item of items) {
+        const stock = await prisma.warehouseStock.findUnique({
+          where: {
+            warehouseId_productId: {
+              warehouseId: originId,
+              productId: item.productId,
+            },
+          },
+        });
+
+        const currentQty = stock?.quantity || 0;
+        if (currentQty < item.quantity) {
+          stockIssues.push(
+            `Producto ${item.productId}: solicita ${item.quantity}, disponible ${currentQty}`
+          );
+        }
+      }
+
+      if (stockIssues.length > 0) {
+        res.status(400).json({
+          error: 'Stock insuficiente en almacén origen',
+          details: stockIssues,
+        });
+        return;
+      }
+
+      // Crear traspaso en estado EN_TRANSITO
+      const transferCode = code || `TRF-${Date.now().toString(36).toUpperCase()}`;
+
+      const transfer = await prisma.stockTransfer.create({
+        data: {
+          code: transferCode,
+          originId,
+          destinationId,
+          status: 'EN_TRANSITO',
+          items: {
+            create: items.map((item: any) => ({
+              productId: item.productId,
+              quantity: parseInt(item.quantity),
+            })),
+          },
+        },
+        include: {
+          items: {
+            include: {
+              product: true,
+            },
+          },
+          origin: true,
+          destination: true,
+        },
+      });
+
+      // Descontar del almacén origen
+      for (const item of items) {
+        await prisma.warehouseStock.update({
+          where: {
+            warehouseId_productId: {
+              warehouseId: originId,
+              productId: item.productId,
+            },
+          },
+          data: {
+            quantity: {
+              decrement: parseInt(item.quantity),
+            },
+          },
+        });
+      }
+
+      res.status(201).json(transfer);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * PUT /api/logistics/transfer/:id/receive
+   * Cambiar estado de EN_TRANSITO a RECIBIDO
+   * Actualizar WarehouseStock del destino
+   */
+  static async receiveTransfer(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+
+      const transfer = await prisma.stockTransfer.findUnique({
+        where: { id },
+        include: {
+          items: true,
+          origin: true,
+          destination: true,
+        },
+      });
+
+      if (!transfer) {
+        res.status(404).json({ error: 'Traspaso no encontrado' });
+        return;
+      }
+
+      if (transfer.status !== 'EN_TRANSITO') {
+        res.status(400).json({
+          error: `No se puede recibir un traspaso en estado ${transfer.status}`,
+        });
+        return;
+      }
+
+      // Transacción: actualizar estado y sumar stock en destino
+      const result = await prisma.$transaction(async (tx) => {
+        // Sumar productos al almacén destino
+        for (const item of transfer.items) {
+          await tx.warehouseStock.upsert({
+            where: {
+              warehouseId_productId: {
+                warehouseId: transfer.destinationId,
+                productId: item.productId,
+              },
+            },
+            update: {
+              quantity: {
+                increment: item.quantity,
+              },
+            },
+            create: {
+              warehouseId: transfer.destinationId,
+              productId: item.productId,
+              quantity: item.quantity,
+            },
+          });
+        }
+
+        // Actualizar estado del traspaso
+        const updated = await tx.stockTransfer.update({
+          where: { id },
+          data: { status: 'RECIBIDO' },
+          include: {
+            items: {
+              include: {
+                product: true,
+              },
+            },
+            origin: true,
+            destination: true,
+          },
+        });
+
+        return updated;
+      });
+
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/logistics/transfers
+   */
+  static async getTransfers(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const transfers = await prisma.stockTransfer.findMany({
+        include: {
+          items: {
+            include: {
+              product: true,
+            },
+          },
+          origin: true,
+          destination: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      res.json(transfers);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/logistics/warehouses
+   */
+  static async getWarehouses(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const warehouses = await prisma.warehouse.findMany({
+        include: {
+          stocks: {
+            include: {
+              product: true,
+            },
+          },
+        },
+      });
+
+      res.json(warehouses);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/logistics/warehouse
+   */
+  static async createWarehouse(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { code, name, location } = req.body;
+
+      if (!code?.trim() || !name?.trim()) {
+        res.status(400).json({ error: 'code y name son requeridos' });
+        return;
+      }
+
+      const warehouse = await prisma.warehouse.create({
+        data: {
+          code: code.trim().toUpperCase(),
+          name: name.trim(),
+          location: location?.trim() || '',
+        },
+      });
+
+      res.status(201).json(warehouse);
+    } catch (error) {
+      next(error);
+    }
+  }
+}

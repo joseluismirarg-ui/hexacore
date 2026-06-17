@@ -1,0 +1,747 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import axios from '../utils/axios-instance';
+import { useSafeData } from '../hooks/useSafeData';
+import { ErrorMessage } from '../components/ui/ErrorMessage';
+import { LoadingSpinner } from '../components/ui/LoadingSpinner';
+
+interface Employee {
+  id: string;
+  userId: string;
+  rfc: string;
+  curp: string;
+  phone: string;
+  salaryBase: string;
+  earnCommission: boolean;
+  commissionPercentage: string;
+  user: {
+    id: string;
+    username: string;
+    email: string;
+    role: string;
+    active: boolean;
+  };
+  createdAt: string;
+}
+
+interface EmployeeFormData {
+  username: string;
+  email: string;
+  password: string;
+  role: string;
+  rfc: string;
+  curp: string;
+  phone: string;
+  salaryBase: string;
+  earnCommission: boolean;
+  commissionPercentage: string;
+}
+
+const INITIAL_FORM: EmployeeFormData = {
+  username: '',
+  email: '',
+  password: '',
+  role: 'VENDEDOR',
+  rfc: '',
+  curp: '',
+  phone: '',
+  salaryBase: '',
+  earnCommission: false,
+  commissionPercentage: '0.00',
+};
+
+const ROLES = [
+  { value: 'VENDEDOR', label: 'Vendedor' },
+  { value: 'ALMACENISTA', label: 'Almacenista' },
+  { value: 'RH', label: 'Recursos Humanos' },
+  { value: 'ADMIN', label: 'Administrador' },
+];
+
+const formatCurrency = (value: string | undefined | null): string => {
+  if (!value) return '$ 0.00';
+  const cleanValue = value.toString().trim();
+  const [integer, decimal = '00'] = cleanValue.split('.');
+  const formattedInteger = parseInt(integer || '0').toLocaleString('es-MX');
+  return `$ ${formattedInteger}.${decimal.padEnd(2, '0').substring(0, 2)}`;
+};
+
+const formatPercentage = (value: string | undefined | null): string => {
+  if (!value) return '0.00%';
+  return `${value.toString().trim()}%`;
+};
+
+const RecursosHumanos: React.FC = () => {
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState<boolean>(false);
+  const [form, setForm] = useState<EmployeeFormData>(INITIAL_FORM);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState<boolean>(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState<boolean>(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState<boolean>(false);
+
+  const safeEmployees = useSafeData(employees);
+
+  const fetchEmployees = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await axios.get('/api/hr/employees');
+      setEmployees(response.data);
+    } catch (err: any) {
+      const message = err.response?.data?.error || 'Error al cargar empleados';
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchEmployees();
+  }, [fetchEmployees]);
+
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+
+    if (!form.username.trim()) errors.username = 'Usuario es requerido';
+    if (form.username.trim().length < 3) errors.username = 'Mínimo 3 caracteres';
+    
+    if (!form.email.trim()) errors.email = 'Email es requerido';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
+      errors.email = 'Email no válido';
+    
+    if (!form.password.trim()) errors.password = 'Contraseña es requerida';
+    else if (form.password.trim().length < 6)
+      errors.password = 'Mínimo 6 caracteres';
+    
+    if (!form.rfc.trim()) errors.rfc = 'RFC es requerido';
+    else if (form.rfc.trim().length < 10)
+      errors.rfc = 'RFC debe tener al menos 10 caracteres';
+    
+    if (!form.curp.trim()) errors.curp = 'CURP es requerido';
+    else if (form.curp.trim().length !== 18)
+      errors.curp = 'CURP debe tener 18 caracteres';
+    
+    if (!form.salaryBase.toString().trim()) errors.salaryBase = 'Salario base es requerido';
+    
+    if (form.earnCommission) {
+      if (!form.commissionPercentage.toString().trim())
+        errors.commissionPercentage = 'Porcentaje de comisión es requerido';
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value, type } = e.target;
+    
+    if (type === 'checkbox') {
+      const checked = (e.target as HTMLInputElement).checked;
+      setForm((prev) => ({ ...prev, [name]: checked }));
+    } else {
+      setForm((prev) => ({ ...prev, [name]: value }));
+    }
+    
+    // Limpiar error del campo
+    if (formErrors[name]) {
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+    }
+    setSubmitError(null);
+    setSubmitSuccess(false);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) return;
+
+    setSubmitting(true);
+    setSubmitError(null);
+    setSubmitSuccess(false);
+
+    try {
+      const payload = {
+        username: form.username.trim(),
+        email: form.email.trim().toLowerCase(),
+        password: form.password.trim(),
+        role: form.role,
+        rfc: form.rfc.trim().toUpperCase(),
+        curp: form.curp.trim().toUpperCase(),
+        phone: form.phone.trim(),
+        salaryBase: form.salaryBase.toString().trim(),
+        earnCommission: form.earnCommission,
+        commissionPercentage: form.commissionPercentage.toString().trim(),
+      };
+
+      await axios.post('/api/hr/employee', payload);
+      
+      setSubmitSuccess(true);
+      setForm(INITIAL_FORM);
+      setFormErrors({});
+      await fetchEmployees();
+      
+      // Cerrar modal después de 1.5 segundos
+      setTimeout(() => {
+        setShowModal(false);
+        setSubmitSuccess(false);
+      }, 1500);
+    } catch (err: any) {
+      const message = err.response?.data?.error || 'Error al crear empleado';
+      setSubmitError(message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleViewDetail = (employee: Employee) => {
+    setSelectedEmployee(employee);
+    setShowDetailModal(true);
+  };
+
+  const getRoleBadge = (role: string) => {
+    const badges: Record<string, string> = {
+      SUPER_ADMIN: 'bg-purple-900/50 text-purple-300 border-purple-700',
+      ADMIN: 'bg-blue-900/50 text-blue-300 border-blue-700',
+      VENDEDOR: 'bg-green-900/50 text-green-300 border-green-700',
+      ALMACENISTA: 'bg-yellow-900/50 text-yellow-300 border-yellow-700',
+      RH: 'bg-pink-900/50 text-pink-300 border-pink-700',
+    };
+    return badges[role] || 'bg-gray-700 text-gray-300 border-gray-600';
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-900">
+      {/* Header */}
+      <div className="bg-gray-800 border-b border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-100">
+                Recursos Humanos
+              </h1>
+              <p className="mt-1 text-sm text-gray-400">
+                Gestión de empleados, perfiles y comisiones
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setForm(INITIAL_FORM);
+                setFormErrors({});
+                setSubmitError(null);
+                setSubmitSuccess(false);
+                setShowModal(true);
+              }}
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition-colors"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Nuevo Empleado
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <ErrorMessage error={error} className="mb-6" />
+
+        {/* Employees Table */}
+        <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-700">
+              <thead className="bg-gray-800">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    Empleado
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    RFC / CURP
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    Rol
+                  </th>
+                  <th className="px-6 py-4 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    Salario Base
+                  </th>
+                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    Comisión
+                  </th>
+                  <th className="px-6 py-4 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-700">
+                {safeEmployees.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                      <svg className="mx-auto h-12 w-12 text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                      <p className="text-sm">No hay empleados registrados</p>
+                      <p className="text-xs text-gray-600 mt-1">
+                        Crea tu primer empleado usando el botón "Nuevo Empleado"
+                      </p>
+                    </td>
+                  </tr>
+                ) : (
+                  safeEmployees.map((employee) => (
+                    <tr
+                      key={employee.id}
+                      className="hover:bg-gray-750 transition-colors cursor-pointer"
+                      onClick={() => handleViewDetail(employee)}
+                    >
+                      <td className="px-6 py-4">
+                        <div className="flex items-center">
+                          <div className="h-10 w-10 rounded-full bg-gray-700 flex items-center justify-center text-gray-300 font-semibold text-sm">
+                            {employee.user?.username?.charAt(0)?.toUpperCase() || '?'}
+                          </div>
+                          <div className="ml-3">
+                            <p className="text-sm font-medium text-gray-100">
+                              {employee.user?.username || 'N/A'}
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              {employee.user?.email || 'N/A'}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-sm text-gray-200 font-mono">
+                          {employee.rfc}
+                        </p>
+                        <p className="text-xs text-gray-500 font-mono mt-0.5">
+                          {employee.curp}
+                        </p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium border ${getRoleBadge(
+                            employee.user?.role
+                          )}`}
+                        >
+                          {employee.user?.role?.replace('_', ' ') || 'N/A'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <p className="text-sm font-mono text-gray-200">
+                          {formatCurrency(employee.salaryBase)}
+                        </p>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        {employee.earnCommission ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-900/50 text-orange-300">
+                            {formatPercentage(employee.commissionPercentage)}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-500">N/A</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewDetail(employee);
+                          }}
+                          className="text-blue-400 hover:text-blue-300 text-sm font-medium transition-colors"
+                        >
+                          Ver detalle
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Create Employee Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20">
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
+              onClick={() => !submitting && setShowModal(false)}
+            />
+
+            {/* Modal */}
+            <div className="relative bg-gray-800 rounded-2xl border border-gray-700 max-w-2xl w-full shadow-2xl">
+              <div className="px-6 py-4 border-b border-gray-700 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-100">
+                  Registrar Nuevo Empleado
+                </h2>
+                <button
+                  onClick={() => !submitting && setShowModal(false)}
+                  className="text-gray-400 hover:text-gray-200 transition-colors"
+                  disabled={submitting}
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmit} className="px-6 py-4">
+                <ErrorMessage error={submitError} className="mb-4" />
+                
+                {submitSuccess && (
+                  <div className="mb-4 bg-green-900/50 border border-green-700 text-green-200 px-4 py-3 rounded-lg flex items-center">
+                    <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <p className="text-sm">Empleado creado exitosamente</p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Username */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Usuario *
+                    </label>
+                    <input
+                      type="text"
+                      name="username"
+                      value={form.username}
+                      onChange={handleInputChange}
+                      className={`w-full bg-gray-900 border rounded-lg px-3 py-2 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        formErrors.username ? 'border-red-500' : 'border-gray-600'
+                      }`}
+                      placeholder="Nombre de usuario"
+                    />
+                    {formErrors.username && (
+                      <p className="text-xs text-red-400 mt-1">{formErrors.username}</p>
+                    )}
+                  </div>
+
+                  {/* Email */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Email *
+                    </label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={form.email}
+                      onChange={handleInputChange}
+                      className={`w-full bg-gray-900 border rounded-lg px-3 py-2 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        formErrors.email ? 'border-red-500' : 'border-gray-600'
+                      }`}
+                      placeholder="correo@empresa.com"
+                    />
+                    {formErrors.email && (
+                      <p className="text-xs text-red-400 mt-1">{formErrors.email}</p>
+                    )}
+                  </div>
+
+                  {/* Password */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Contraseña *
+                    </label>
+                    <input
+                      type="password"
+                      name="password"
+                      value={form.password}
+                      onChange={handleInputChange}
+                      className={`w-full bg-gray-900 border rounded-lg px-3 py-2 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        formErrors.password ? 'border-red-500' : 'border-gray-600'
+                      }`}
+                      placeholder="Mínimo 6 caracteres"
+                    />
+                    {formErrors.password && (
+                      <p className="text-xs text-red-400 mt-1">{formErrors.password}</p>
+                    )}
+                  </div>
+
+                  {/* Rol */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Rol *
+                    </label>
+                    <select
+                      name="role"
+                      value={form.role}
+                      onChange={handleInputChange}
+                      className="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      {ROLES.map((role) => (
+                        <option key={role.value} value={role.value}>
+                          {role.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* RFC */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      RFC *
+                    </label>
+                    <input
+                      type="text"
+                      name="rfc"
+                      value={form.rfc}
+                      onChange={handleInputChange}
+                      className={`w-full bg-gray-900 border rounded-lg px-3 py-2 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase ${
+                        formErrors.rfc ? 'border-red-500' : 'border-gray-600'
+                      }`}
+                      placeholder="XAXX010101000"
+                    />
+                    {formErrors.rfc && (
+                      <p className="text-xs text-red-400 mt-1">{formErrors.rfc}</p>
+                    )}
+                  </div>
+
+                  {/* CURP */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      CURP *
+                    </label>
+                    <input
+                      type="text"
+                      name="curp"
+                      value={form.curp}
+                      onChange={handleInputChange}
+                      className={`w-full bg-gray-900 border rounded-lg px-3 py-2 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase ${
+                        formErrors.curp ? 'border-red-500' : 'border-gray-600'
+                      }`}
+                      placeholder="AAAA000000HDFXXX00"
+                    />
+                    {formErrors.curp && (
+                      <p className="text-xs text-red-400 mt-1">{formErrors.curp}</p>
+                    )}
+                  </div>
+
+                  {/* Teléfono */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Teléfono
+                    </label>
+                    <input
+                      type="text"
+                      name="phone"
+                      value={form.phone}
+                      onChange={handleInputChange}
+                      className="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="(555) 123-4567"
+                    />
+                  </div>
+
+                  {/* Salario Base */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Salario Base *
+                    </label>
+                    <input
+                      type="text"
+                      name="salaryBase"
+                      value={form.salaryBase}
+                      onChange={handleInputChange}
+                      className={`w-full bg-gray-900 border rounded-lg px-3 py-2 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        formErrors.salaryBase ? 'border-red-500' : 'border-gray-600'
+                      }`}
+                      placeholder="15000.00"
+                    />
+                    {formErrors.salaryBase && (
+                      <p className="text-xs text-red-400 mt-1">{formErrors.salaryBase}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Comisión Toggle */}
+                <div className="mt-4 p-4 bg-gray-900/50 rounded-lg border border-gray-700">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-sm font-medium text-gray-300">
+                        Gana Comisión
+                      </label>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Habilitar porcentaje de comisión sobre ventas
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForm((prev) => ({
+                          ...prev,
+                          earnCommission: !prev.earnCommission,
+                          commissionPercentage: !prev.earnCommission ? prev.commissionPercentage : '0.00',
+                        }));
+                      }}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800 ${
+                        form.earnCommission ? 'bg-blue-600' : 'bg-gray-600'
+                      }`}
+                      aria-pressed={form.earnCommission}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
+                          form.earnCommission ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {form.earnCommission && (
+                    <div className="mt-3">
+                      <label className="block text-sm font-medium text-gray-300 mb-1">
+                        % de Comisión *
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          name="commissionPercentage"
+                          value={form.commissionPercentage}
+                          onChange={handleInputChange}
+                          className={`w-full bg-gray-800 border rounded-lg px-3 py-2 pr-8 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                            formErrors.commissionPercentage
+                              ? 'border-red-500'
+                              : 'border-gray-600'
+                          }`}
+                          placeholder="5.00"
+                        />
+                        <span className="absolute right-3 top-2 text-gray-400">%</span>
+                      </div>
+                      {formErrors.commissionPercentage && (
+                        <p className="text-xs text-red-400 mt-1">
+                          {formErrors.commissionPercentage}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowModal(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors"
+                    disabled={submitting}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {submitting ? (
+                      <>
+                        <LoadingSpinner size="sm" className="mr-2" />
+                        Registrando...
+                      </>
+                    ) : (
+                      'Registrar Empleado'
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Modal */}
+      {showDetailModal && selectedEmployee && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20">
+            <div
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
+              onClick={() => setShowDetailModal(false)}
+            />
+            <div className="relative bg-gray-800 rounded-2xl border border-gray-700 max-w-lg w-full shadow-2xl">
+              <div className="px-6 py-4 border-b border-gray-700 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-100">
+                  Detalle de Empleado
+                </h2>
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="text-gray-400 hover:text-gray-200 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="px-6 py-4 space-y-4">
+                <div className="flex items-center space-x-3">
+                  <div className="h-14 w-14 rounded-full bg-gray-700 flex items-center justify-center text-gray-300 font-bold text-xl">
+                    {selectedEmployee.user?.username?.charAt(0)?.toUpperCase() || '?'}
+                  </div>
+                  <div>
+                    <p className="text-lg font-semibold text-gray-100">
+                      {selectedEmployee.user?.username}
+                    </p>
+                    <p className="text-sm text-gray-400">{selectedEmployee.user?.email}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <DetailField label="RFC" value={selectedEmployee.rfc} mono />
+                  <DetailField label="CURP" value={selectedEmployee.curp} mono />
+                  <DetailField label="Teléfono" value={selectedEmployee.phone || 'N/A'} />
+                  <DetailField label="Rol" value={selectedEmployee.user?.role?.replace('_', ' ')} />
+                  <DetailField
+                    label="Salario Base"
+                    value={formatCurrency(selectedEmployee.salaryBase)}
+                  />
+                  <DetailField
+                    label="Comisión"
+                    value={
+                      selectedEmployee.earnCommission
+                        ? formatPercentage(selectedEmployee.commissionPercentage)
+                        : 'No aplica'
+                    }
+                  />
+                </div>
+              </div>
+              <div className="px-6 py-4 border-t border-gray-700 flex justify-end">
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const DetailField: React.FC<{ label: string; value: string; mono?: boolean }> = ({
+  label,
+  value,
+  mono = false,
+}) => (
+  <div>
+    <p className="text-xs text-gray-500 uppercase tracking-wider">{label}</p>
+    <p className={`text-sm text-gray-200 mt-0.5 ${mono ? 'font-mono' : ''}`}>
+      {value || '—'}
+    </p>
+  </div>
+);
+
+export default RecursosHumanos;

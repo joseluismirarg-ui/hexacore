@@ -1,0 +1,49 @@
+import { Router } from 'express';
+import { LogisticsController } from '../controllers/logistics.controller';
+import { authenticate } from '../middlewares/auth.middleware';
+import { authorize } from '../middlewares/authorize.middleware';
+import { requireModule } from '../middlewares/license-initializer.middleware';
+
+const router = Router();
+
+router.get(
+  '/api/logistics/warehouses',
+  authenticate,
+  authorize(['SUPER_ADMIN', 'ADMIN', 'ALMACENISTA']),
+  requireModule('logisticsActive'),
+  LogisticsController.getWarehouses
+);
+
+router.post(
+  '/api/logistics/warehouse',
+  authenticate,
+  authorize(['SUPER_ADMIN', 'ADMIN']),
+  requireModule('logisticsActive'),
+  LogisticsController.createWarehouse
+);
+
+router.post(
+  '/api/logistics/transfer',
+  authenticate,
+  authorize(['SUPER_ADMIN', 'ADMIN', 'ALMACENISTA']),
+  requireModule('logisticsActive'),
+  LogisticsController.createTransfer
+);
+
+router.put(
+  '/api/logistics/transfer/:id/receive',
+  authenticate,
+  authorize(['SUPER_ADMIN', 'ADMIN', 'ALMACENISTA']),
+  requireModule('logisticsActive'),
+  LogisticsController.receiveTransfer
+);
+
+router.get(
+  '/api/logistics/transfers',
+  authenticate,
+  authorize(['SUPER_ADMIN', 'ADMIN', 'ALMACENISTA']),
+  requireModule('logisticsActive'),
+  LogisticsController.getTransfers
+);
+
+export default router;

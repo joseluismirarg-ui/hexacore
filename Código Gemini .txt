@@ -1,0 +1,61 @@
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log('🌱 Iniciando el sembrado de la base de datos (Seeding)...');
+
+  // 1. Inicializar la Licencia SaaS por defecto (Fail-Safe)
+  const existingLicense = await prisma.moduleLicense.count();
+  if (existingLicense === 0) {
+    await prisma.moduleLicense.create({
+      data: {
+        erpActive: true,
+        posActive: true,
+        hrActive: true, // Prendemos RH para poder asignar empleados
+        billingActive: false,
+        logisticsActive: false,
+        manufacturingActive: false,
+        treasuryActive: false,
+        reportsActive: false,
+      },
+    });
+    console.log('✅ Matriz de Licencia SaaS inicializada.');
+  }
+
+  // 2. Crear el Usuario Súper Administrador
+  const superAdminExists = await prisma.user.findFirst({
+    where: { role: 'SUPER_ADMIN' },
+  });
+
+  if (!superAdminExists) {
+    // Hasheamos la contraseña por seguridad
+    const hashedPassword = await bcrypt.hash('HexaAdmin2026!', 10);
+    
+    await prisma.user.create({
+      data: {
+        username: 'CEO Hexa Core',
+        email: 'admin@hexacore.com',
+        password: hashedPassword,
+        role: 'SUPER_ADMIN',
+      },
+    });
+    console.log('✅ Usuario Súper Administrador creado con éxito.');
+    console.log('   -> Email: admin@hexacore.com');
+    console.log('   -> Password: HexaAdmin2026!');
+  } else {
+    console.log('⚠️ El usuario Súper Administrador ya existe. Omitiendo creación.');
+  }
+
+  console.log('🚀 Sembrado completado. El ERP está listo para producción.');
+}
+
+main()
+  .catch((e) => {
+    console.error('❌ Error durante el sembrado:', e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

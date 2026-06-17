@@ -1,0 +1,41 @@
+import { Router } from 'express';
+import { ManufacturingController } from '../controllers/manufacturing.controller';
+import { authenticate } from '../middlewares/auth.middleware';
+import { authorize } from '../middlewares/authorize.middleware';
+import { requireModule } from '../middlewares/license-initializer.middleware';
+
+const router = Router();
+
+router.post(
+  '/api/manufacturing/bom',
+  authenticate,
+  authorize(['SUPER_ADMIN', 'ADMIN']),
+  requireModule('manufacturingActive'),
+  ManufacturingController.createBOM
+);
+
+router.get(
+  '/api/manufacturing/boms',
+  authenticate,
+  authorize(['SUPER_ADMIN', 'ADMIN', 'ALMACENISTA']),
+  requireModule('manufacturingActive'),
+  ManufacturingController.getBOMs
+);
+
+router.get(
+  '/api/manufacturing/bom/:productId',
+  authenticate,
+  authorize(['SUPER_ADMIN', 'ADMIN', 'ALMACENISTA']),
+  requireModule('manufacturingActive'),
+  ManufacturingController.getBOMByProduct
+);
+
+router.post(
+  '/api/manufacturing/production-order',
+  authenticate,
+  authorize(['SUPER_ADMIN', 'ADMIN', 'ALMACENISTA']),
+  requireModule('manufacturingActive'),
+  ManufacturingController.processProductionOrder
+);
+
+export default router;

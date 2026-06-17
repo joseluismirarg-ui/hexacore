@@ -1,0 +1,72 @@
+import { Request, Response, NextFunction } from 'express';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+export class LicenseController {
+  /**
+   * GET /api/superadmin/license
+   * Obtener licencia actual
+   */
+  static async getLicense(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const license = await prisma.moduleLicense.findFirst();
+      if (!license) {
+        res.status(404).json({ error: 'Licencia no encontrada' });
+        return;
+      }
+      res.json(license);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * PUT /api/superadmin/license
+   * Actualizar switches de licencia (solo SUPER_ADMIN)
+   */
+  static async updateLicense(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const {
+        erpActive,
+        posActive,
+        hrActive,
+        billingActive,
+        logisticsActive,
+        manufacturingActive,
+        treasuryActive,
+        reportsActive,
+      } = req.body;
+
+      const license = await prisma.moduleLicense.findFirst();
+      if (!license) {
+        res.status(404).json({ error: 'Licencia no encontrada' });
+        return;
+      }
+
+      const updated = await prisma.moduleLicense.update({
+        where: { id: license.id },
+        data: {
+          erpActive: typeof erpActive === 'boolean' ? erpActive : undefined,
+          posActive: typeof posActive === 'boolean' ? posActive : undefined,
+          hrActive: typeof hrActive === 'boolean' ? hrActive : undefined,
+          billingActive: typeof billingActive === 'boolean' ? billingActive : undefined,
+          logisticsActive:
+            typeof logisticsActive === 'boolean' ? logisticsActive : undefined,
+          manufacturingActive:
+            typeof manufacturingActive === 'boolean'
+              ? manufacturingActive
+              : undefined,
+          treasuryActive:
+            typeof treasuryActive === 'boolean' ? treasuryActive : undefined,
+          reportsActive:
+            typeof reportsActive === 'boolean' ? reportsActive : undefined,
+        },
+      });
+
+      res.json(updated);
+    } catch (error) {
+      next(error);
+    }
+  }
+}

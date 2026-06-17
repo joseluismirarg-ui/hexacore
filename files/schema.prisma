@@ -1,0 +1,192 @@
+// =============================================================================
+// HEXA CORE SYSTEMS — schema.prisma
+// Provider : PostgreSQL
+// ORM      : Prisma
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum Role {
+  ADMINISTRADOR
+  VENDEDOR_RUTA
+}
+
+enum LocationType {
+  CENTRAL
+  MOVIL
+  CONSIGNACION_CLIENTE
+}
+
+enum TransactionType {
+  VENTA_DIRECTA
+  CREDITO
+  CONSIGNACION
+}
+
+enum TransactionStatus {
+  PENDIENTE
+  COMPLETADO
+  CANCELADO
+}
+
+// =============================================================================
+// USER
+// =============================================================================
+
+model User {
+  id           String @id @default(cuid())
+  email        String @unique
+  passwordHash String @map("password_hash")
+  name         String
+  role         Role
+
+  transactions Transaction[]
+  auditLogs    AuditLog[]
+
+  @@map("users")
+}
+
+// =============================================================================
+// CUSTOMER
+// =============================================================================
+
+model Customer {
+  id          String  @id @default(cuid())
+  companyName String  @map("company_name")
+  creditLimit Decimal @db.Decimal(14, 2) @map("credit_limit")
+  currentDebt Decimal @db.Decimal(14, 2) @map("current_debt")
+
+  transactions       Transaction[]
+  inventoryLocations InventoryLocation[]
+
+  @@map("customers")
+}
+
+// =============================================================================
+// PRODUCT
+// =============================================================================
+
+model Product {
+  id          String  @id @default(cuid())
+  sku         String  @unique
+  name        String
+  cost        Decimal @db.Decimal(14, 4)
+  price       Decimal @db.Decimal(14, 4)
+  globalStock Int     @default(0) @map("global_stock")
+
+  inventoryStocks  InventoryStock[]
+  transactionItems TransactionItem[]
+
+  @@map("products")
+}
+
+// =============================================================================
+// INVENTORY LOCATION
+// =============================================================================
+
+model InventoryLocation {
+  id   String       @id @default(cuid())
+  name String
+  tipo LocationType
+
+  // Populated only when tipo = CONSIGNACION_CLIENTE; null for CENTRAL / MOVIL
+  customerId String?   @map("customer_id")
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  inventoryStocks InventoryStock[]
+
+  @@map("inventory_locations")
+}
+
+// =============================================================================
+// INVENTORY STOCK  —  explicit junction: Product <-> InventoryLocation
+// =============================================================================
+
+model InventoryStock {
+  id        String   @id @default(cuid())
+  quantity  Int      @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  locationId String            @map("location_id")
+  location   InventoryLocation @relation(fields: [locationId], references: [id])
+
+  productId String  @map("product_id")
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@unique([locationId, productId])
+  @@map("inventory_stock")
+}
+
+// =============================================================================
+// TRANSACTION
+// =============================================================================
+
+model Transaction {
+  id        String            @id @default(cuid())
+  uuid      String            @unique @default(uuid())
+  tipo      TransactionType
+  status    TransactionStatus @default(PENDIENTE)
+  total     Decimal           @db.Decimal(14, 2)
+  createdAt DateTime          @default(now()) @map("created_at")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id])
+
+  customerId String   @map("customer_id")
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  items TransactionItem[]
+
+  @@index([customerId])
+  @@index([userId])
+  @@index([status])
+  @@index([tipo])
+  @@map("transactions")
+}
+
+// =============================================================================
+// TRANSACTION ITEM
+// =============================================================================
+
+model TransactionItem {
+  id             String  @id @default(cuid())
+  cantidad       Int
+  precioAplicado Decimal @db.Decimal(14, 4) @map("precio_aplicado")
+
+  transactionId String      @map("transaction_id")
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  productId String  @map("product_id")
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@map("transaction_items")
+}
+
+// =============================================================================
+// AUDIT LOG
+// =============================================================================
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  accion    String
+  detalles  Json
+  timestamp DateTime @default(now())
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([timestamp])
+  @@map("audit_logs")
+}

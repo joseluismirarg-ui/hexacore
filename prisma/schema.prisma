@@ -1,0 +1,901 @@
+// =============================================================================
+// HEXA CORE SYSTEMS — schema.prisma v3.0 (Multi-Tenant & Universal)
+// Provider : PostgreSQL
+// ORM      : Prisma
+// Módulos  : ERP completo — Compras, Kardex, Pagos, Facturación CFDI 4.0
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum Role {
+  ADMIN
+  VENDEDOR
+  ALMACENISTA
+  RH
+}
+
+enum LocationType {
+  CENTRAL
+  MOVIL
+  CONSIGNACION_CLIENTE
+}
+
+enum TransactionType {
+  VENTA_DIRECTA
+  CREDITO
+  CONSIGNACION
+}
+
+enum TransactionStatus {
+  PENDIENTE
+  COMPLETADO
+  CANCELADO
+}
+
+enum PurchaseOrderStatus {
+  PENDIENTE
+  RECIBIDA
+  CANCELADA
+}
+
+enum KardexMovementType {
+  ENTRADA_COMPRA
+  SALIDA_VENTA
+  TRASPASO
+  AJUSTE_INVENTARIO
+}
+
+enum PaymentMethod {
+  TRANSFERENCIA
+  EFECTIVO
+  CHEQUE
+  TARJETA
+}
+
+enum InvoiceStatus {
+  TIMBRADA
+  CANCELADA
+  ERROR_SAT
+}
+
+enum TenantPlan {
+  BASIC
+  PRO
+  ENTERPRISE
+}
+
+enum TenantStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  SUSPENDED
+}
+
+// =============================================================================
+// TENANT (Multitenancy)
+// =============================================================================
+
+model Tenant {
+  id                   String       @id @default(cuid())
+  name                 String
+  industry             String       @default("GENERAL") // RETAIL, CONSTRUCTION, OIL, etc.
+  plan                 TenantPlan   @default(BASIC)
+  status               TenantStatus @default(TRIAL)
+  stripeCustomerId     String?      @map("stripe_customer_id")
+  stripeSubscriptionId String?      @map("stripe_subscription_id")
+  expiresAt            DateTime?    @map("expires_at")
+  createdAt            DateTime     @default(now()) @map("created_at")
+
+  users                 User[]
+  tickets               Ticket[]
+  customers             Customer[]
+  suppliers             Supplier[]
+  items                 Item[]
+  categories            Category[]
+  inventoryLocations    InventoryLocation[]
+  transactions          Transaction[]
+  payments              Payment[]
+  salesOrders           SalesOrder[]
+  purchaseOrders        PurchaseOrder[]
+  priceLists            PriceList[]
+  invoices              Invoice[]
+  auditLogs             AuditLog[]
+  locations             Location[]
+  inventoryAudits       InventoryAudit[]
+  attendances           Attendance[]
+  payrolls              Payroll[]
+  leaveRequests         LeaveRequest[]
+  stockTransfers        StockTransfer[]
+  bankAccounts          BankAccount[]
+  systemConfigs         SystemConfig[]
+  kardexMovements       KardexMovement[]
+  billOfMaterials       BillOfMaterials[]
+  predictiveStockAlerts PredictiveStockAlert[]
+
+  @@map("tenants")
+}
+
+// =============================================================================
+// USER
+// =============================================================================
+
+model User {
+  id           String  @id @default(cuid())
+  email        String  @unique
+  passwordHash String  @map("password_hash")
+  name         String
+  role         Role
+  isActive     Boolean @default(true) @map("is_active")
+
+  tenantId String @default("default-tenant") @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  transactions    Transaction[]
+  auditLogs       AuditLog[]
+  kardexMovements KardexMovement[]
+  attendances     Attendance[]
+  payrolls        Payroll[]
+  leaveRequests   LeaveRequest[]
+  salesOrders     SalesOrder[]
+  employeeProfile EmployeeProfile?
+  Ticket          Ticket[]
+
+  @@map("users")
+}
+
+// =============================================================================
+// CUSTOMER
+// =============================================================================
+
+model Customer {
+  id          String  @id @default(cuid())
+  companyName String  @map("company_name")
+  rfc         String? @unique
+  email       String?
+  phone       String?
+
+  creditLimit Decimal @map("credit_limit") @db.Decimal(14, 2)
+  currentDebt Decimal @map("current_debt") @db.Decimal(14, 2)
+
+  priceListId String?    @map("price_list_id")
+  priceList   PriceList? @relation(fields: [priceListId], references: [id])
+
+  tenantId String @default("default-tenant") @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  transactions       Transaction[]
+  salesOrders        SalesOrder[]
+  inventoryLocations InventoryLocation[]
+  payments           Payment[]
+  invoices           Invoice[]
+
+  @@map("customers")
+}
+
+// =============================================================================
+// SUPPLIER
+// =============================================================================
+
+model Supplier {
+  id      String  @id @default(cuid())
+  name    String
+  rfc     String  @unique
+  email   String?
+  phone   String?
+  address String?
+
+  tenantId String @default("default-tenant") @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  purchaseOrders   PurchaseOrder[]
+  supplierPayments SupplierPayment[]
+
+  @@map("suppliers")
+}
+
+model SupplierPayment {
+  id     String        @id @default(cuid())
+  amount Decimal       @db.Decimal(14, 2)
+  method PaymentMethod
+  date   DateTime      @default(now())
+  notes  String?
+
+  supplierId String   @map("supplier_id")
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+
+  purchaseOrderId String?        @map("purchase_order_id")
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+
+  @@index([supplierId])
+  @@index([date])
+  @@map("supplier_payments")
+}
+
+// =============================================================================
+// CATEGORY
+// =============================================================================
+
+model Category {
+  id   String @id @default(cuid())
+  name String
+
+  tenantId String @default("default-tenant") @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  items Item[]
+
+  @@map("categories")
+}
+
+// =============================================================================
+// ITEM (Universal Product)
+// =============================================================================
+
+model Item {
+  id          String  @id @default(cuid())
+  sku         String  @unique
+  name        String
+  description String?
+
+  cost  Decimal @db.Decimal(14, 4)
+  price Decimal @db.Decimal(14, 4)
+
+  reorderPoint Int @default(10) @map("reorder_point")
+  globalStock  Int @default(0) @map("global_stock")
+
+  categoryId String?   @map("category_id")
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  tenantId String @default("default-tenant") @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  priceListItems      PriceListItem[]
+  inventoryStocks     InventoryStock[]
+  inventories         Inventory[]
+  transactionItems    TransactionItem[]
+  purchaseOrderItems  PurchaseOrderItem[]
+  salesOrderItems     SalesOrderItem[]
+  kardexMovements     KardexMovement[]
+  transferItems       TransferItem[]
+  inventoryAuditItems InventoryAuditItem[]
+  bomFinalProduct     BillOfMaterials?       @relation("FinalItem")
+  bomComponent        BOMItem[]              @relation("ComponentItem")
+  predictiveAlerts    PredictiveStockAlert[]
+
+  @@map("items")
+}
+
+// =============================================================================
+// INVENTORY LOCATION
+// =============================================================================
+
+model InventoryLocation {
+  id   String       @id @default(cuid())
+  name String       @unique
+  tipo LocationType
+
+  customerId String?   @map("customer_id")
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
+  tenantId String @default("default-tenant") @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  inventoryStocks InventoryStock[]
+
+  @@map("inventory_locations")
+}
+
+model InventoryStock {
+  id        String   @id @default(cuid())
+  quantity  Int      @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  lotNumber      String?   @map("lot_number")
+  expirationDate DateTime? @map("expiration_date") @db.Date
+
+  locationId String            @map("location_id")
+  location   InventoryLocation @relation(fields: [locationId], references: [id], onDelete: Restrict)
+
+  itemId String @map("item_id")
+  item   Item   @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@unique([locationId, itemId])
+  @@map("inventory_stock")
+}
+
+// =============================================================================
+// PURCHASE ORDER
+// =============================================================================
+
+model PurchaseOrder {
+  id          String              @id @default(cuid())
+  status      PurchaseOrderStatus @default(PENDIENTE)
+  totalAmount Decimal             @map("total_amount") @db.Decimal(14, 2)
+  notes       String?
+  createdAt   DateTime            @default(now()) @map("created_at")
+  receivedAt  DateTime?           @map("received_at")
+
+  supplierId String   @map("supplier_id")
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+
+  tenantId String @default("default-tenant") @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  items    PurchaseOrderItem[]
+  payments SupplierPayment[]
+
+  @@index([supplierId])
+  @@index([status])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id       String  @id @default(cuid())
+  cantidad Int
+  costUnit Decimal @map("cost_unit") @db.Decimal(14, 4)
+
+  purchaseOrderId String        @map("purchase_order_id")
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+
+  itemId String @map("item_id")
+  item   Item   @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@map("purchase_order_items")
+}
+
+// =============================================================================
+// KARDEX MOVEMENT
+// =============================================================================
+
+model KardexMovement {
+  id          String             @id @default(cuid())
+  tipo        KardexMovementType
+  cantidad    Int
+  referenceId String?            @map("reference_id")
+  notes       String?
+  timestamp   DateTime           @default(now())
+
+  locationOrigenId  String? @map("location_origen_id")
+  locationDestinoId String? @map("location_destino_id")
+
+  itemId String @map("item_id")
+  item   Item   @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  tenantId String @default("default-tenant") @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+  @@index([userId])
+  @@index([timestamp])
+  @@index([tipo])
+  @@map("kardex_movements")
+}
+
+// =============================================================================
+// TRANSACTION
+// =============================================================================
+
+model Transaction {
+  id   String @id @default(cuid())
+  uuid String @unique @default(uuid())
+
+  tipo      TransactionType
+  status    TransactionStatus @default(PENDIENTE)
+  total     Decimal           @db.Decimal(14, 2)
+  createdAt DateTime          @default(now()) @map("created_at")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  customerId String   @map("customer_id")
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
+  tenantId String @default("default-tenant") @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  items    TransactionItem[]
+  payments Payment[]
+  invoices Invoice[]
+
+  @@index([customerId])
+  @@index([userId])
+  @@index([status])
+  @@index([tipo])
+  @@index([createdAt])
+  @@map("transactions")
+}
+
+model TransactionItem {
+  id             String  @id @default(cuid())
+  cantidad       Int
+  precioAplicado Decimal @map("precio_aplicado") @db.Decimal(14, 4)
+
+  transactionId String      @map("transaction_id")
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  itemId String @map("item_id")
+  item   Item   @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@map("transaction_items")
+}
+
+// =============================================================================
+// PAYMENT
+// =============================================================================
+
+model Payment {
+  id     String        @id @default(cuid())
+  amount Decimal       @db.Decimal(14, 2)
+  method PaymentMethod
+  date   DateTime      @default(now())
+  notes  String?
+
+  customerId String   @map("customer_id")
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
+  transactionId String?      @map("transaction_id")
+  transaction   Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+
+  tenantId String @default("default-tenant") @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([date])
+  @@map("payments")
+}
+
+// =============================================================================
+// SALES ORDER
+// =============================================================================
+
+model SalesOrder {
+  id        String   @id @default(cuid())
+  uuid      String   @unique @default(uuid())
+  status    String   @default("COTIZACION")
+  total     Decimal  @db.Decimal(14, 2)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  customerId String   @map("customer_id")
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
+  tenantId String @default("default-tenant") @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  items SalesOrderItem[]
+
+  @@map("sales_orders")
+}
+
+model SalesOrderItem {
+  id             String  @id @default(cuid())
+  cantidad       Int
+  precioAplicado Decimal @map("precio_aplicado") @db.Decimal(14, 4)
+
+  salesOrderId String     @map("sales_order_id")
+  salesOrder   SalesOrder @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
+
+  itemId String @map("item_id")
+  item   Item   @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@map("sales_order_items")
+}
+
+// =============================================================================
+// PRICE LISTS
+// =============================================================================
+
+model PriceList {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  description String?
+  isActive    Boolean @default(true)
+
+  tenantId String @default("default-tenant") @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  customers Customer[]
+  items     PriceListItem[]
+
+  @@map("price_lists")
+}
+
+model PriceListItem {
+  id    String  @id @default(cuid())
+  price Decimal @db.Decimal(14, 4)
+
+  priceListId String    @map("price_list_id")
+  priceList   PriceList @relation(fields: [priceListId], references: [id], onDelete: Cascade)
+
+  itemId String @map("item_id")
+  item   Item   @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@unique([priceListId, itemId])
+  @@map("price_list_items")
+}
+
+// =============================================================================
+// INVOICE
+// =============================================================================
+
+model Invoice {
+  id             String        @id @default(cuid())
+  uuid_sat       String        @unique @map("uuid_sat")
+  rfc_receptor   String        @map("rfc_receptor")
+  regimen_fiscal String        @map("regimen_fiscal")
+  uso_cfdi       String        @map("uso_cfdi")
+  status         InvoiceStatus @default(TIMBRADA)
+  pdfUrl         String?       @map("pdf_url")
+  xmlUrl         String?       @map("xml_url")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  transactionId String      @map("transaction_id")
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+
+  customerId String   @map("customer_id")
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
+  tenantId String @default("default-tenant") @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([transactionId])
+  @@index([status])
+  @@map("invoices")
+}
+
+// =============================================================================
+// AUDIT LOG
+// =============================================================================
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  accion    String
+  detalles  Json
+  timestamp DateTime @default(now())
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  tenantId String @default("default-tenant") @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([timestamp])
+  @@map("audit_logs")
+}
+
+// =============================================================================
+// LOCATION
+// =============================================================================
+
+model Location {
+  id       String  @id @default(cuid())
+  name     String
+  location String?
+  code     String  @unique
+
+  tenantId String @default("default-tenant") @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  inventories     Inventory[]
+  inventoryAudits InventoryAudit[]
+  transfersFrom   StockTransfer[]  @relation("OriginLocation")
+  transfersTo     StockTransfer[]  @relation("DestinationLocation")
+
+  @@map("locations")
+}
+
+model Inventory {
+  id        String   @id @default(cuid())
+  quantity  Int      @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  lotNumber      String?   @map("lot_number")
+  expirationDate DateTime? @map("expiration_date") @db.Date
+
+  locationId String   @map("location_id")
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Restrict)
+
+  itemId String @map("item_id")
+  item   Item   @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@unique([locationId, itemId])
+  @@map("inventories")
+}
+
+// =============================================================================
+// INVENTORY AUDIT
+// =============================================================================
+
+model InventoryAudit {
+  id          String    @id @default(cuid())
+  locationId  String    @map("location_id")
+  location    Location  @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  status      String    @default("EN_PROGRESO")
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  tenantId String @default("default-tenant") @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  items InventoryAuditItem[]
+
+  @@map("inventory_audits")
+}
+
+model InventoryAuditItem {
+  id          String         @id @default(cuid())
+  auditId     String         @map("audit_id")
+  audit       InventoryAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  itemId      String         @map("item_id")
+  item        Item           @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  expectedQty Int
+  countedQty  Int?
+  discrepancy Int?
+
+  @@map("inventory_audit_items")
+}
+
+// =============================================================================
+// HR - ATTENDANCE & PAYROLL
+// =============================================================================
+
+model Attendance {
+  id       String    @id @default(cuid())
+  date     DateTime  @db.Date
+  checkIn  DateTime  @map("check_in")
+  checkOut DateTime? @map("check_out")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  tenantId String @default("default-tenant") @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@map("attendances")
+}
+
+model Payroll {
+  id          String   @id @default(cuid())
+  period      String
+  baseSalary  Decimal  @map("base_salary") @db.Decimal(14, 2)
+  commissions Decimal  @db.Decimal(14, 2)
+  totalPaid   Decimal  @map("total_paid") @db.Decimal(14, 2)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  tenantId String @default("default-tenant") @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([userId, period])
+  @@map("payrolls")
+}
+
+model LeaveRequest {
+  id        String   @id @default(cuid())
+  type      String
+  startDate DateTime @db.Date
+  endDate   DateTime @db.Date
+  status    String   @default("PENDIENTE")
+  reason    String?
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  tenantId String @default("default-tenant") @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("leave_requests")
+}
+
+// =============================================================================
+// SYSTEM CONFIG
+// =============================================================================
+
+model SystemConfig {
+  id          String @id @default(cuid())
+  companyName String @map("company_name")
+  companyRfc  String @map("company_rfc")
+  taxRegimen  String @map("tax_regimen")
+  posTimeout  Int    @default(300) @map("pos_timeout")
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenantId String @default("default-tenant") @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("system_config")
+}
+
+// =============================================================================
+// MODULE LICENSE
+// =============================================================================
+
+model ModuleLicense {
+  id                  String   @id @default(uuid())
+  erpActive           Boolean  @default(true)
+  posActive           Boolean  @default(true)
+  hrActive            Boolean  @default(false)
+  billingActive       Boolean  @default(false)
+  logisticsActive     Boolean  @default(false)
+  manufacturingActive Boolean  @default(false)
+  treasuryActive      Boolean  @default(false)
+  reportsActive       Boolean  @default(false)
+  updatedAt           DateTime @updatedAt
+}
+
+// =============================================================================
+// EMPLOYEE PROFILE
+// =============================================================================
+
+model EmployeeProfile {
+  id                   String   @id @default(uuid())
+  userId               String   @unique
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rfc                  String   @unique
+  curp                 String   @unique
+  phone                String
+  salaryBase           String
+  earnCommission       Boolean  @default(false)
+  commissionPercentage String   @default("0.00")
+  createdAt            DateTime @default(now())
+}
+
+// =============================================================================
+// STOCK TRANSFER
+// =============================================================================
+
+model StockTransfer {
+  id            String         @id @default(uuid())
+  code          String         @unique
+  originId      String
+  destinationId String
+  status        String
+  items         TransferItem[]
+  createdAt     DateTime       @default(now())
+
+  origin      Location @relation("OriginLocation", fields: [originId], references: [id])
+  destination Location @relation("DestinationLocation", fields: [destinationId], references: [id])
+
+  tenantId String @default("default-tenant") @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model TransferItem {
+  id         String @id @default(uuid())
+  transferId String
+  itemId     String @map("item_id")
+  quantity   Int
+
+  transfer StockTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  item     Item          @relation(fields: [itemId], references: [id])
+}
+
+// =============================================================================
+// BILL OF MATERIALS
+// =============================================================================
+
+model BillOfMaterials {
+  id         String    @id @default(uuid())
+  itemId     String    @unique @map("item_id")
+  item       Item      @relation("FinalItem", fields: [itemId], references: [id])
+  components BOMItem[]
+  createdAt  DateTime  @default(now())
+
+  tenantId String @default("default-tenant") @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model BOMItem {
+  id               String @id @default(uuid())
+  bomId            String
+  componentId      String @map("component_id")
+  quantityRequired Int
+
+  bom       BillOfMaterials @relation(fields: [bomId], references: [id], onDelete: Cascade)
+  component Item            @relation("ComponentItem", fields: [componentId], references: [id])
+}
+
+// =============================================================================
+// BANK ACCOUNT & MOVEMENTS
+// =============================================================================
+
+model BankAccount {
+  id             String         @id @default(uuid())
+  bankName       String
+  accountNumber  String         @unique
+  currentBalance String
+  movements      BankMovement[]
+
+  tenantId String @default("default-tenant") @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model BankMovement {
+  id            String      @id @default(uuid())
+  bankAccountId String
+  type          String
+  amount        String
+  concept       String
+  createdAt     DateTime    @default(now())
+  account       BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+}
+
+// =============================================================================
+// PREDICTIVE STOCK ALERTS
+// =============================================================================
+
+model PredictiveStockAlert {
+  id                String   @id @default(cuid())
+  currentStock      Int      @map("current_stock")
+  estimatedDaysLeft Int      @map("estimated_days_left")
+  velocityRate      Decimal  @map("velocity_rate") @db.Decimal(14, 4)
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  itemId String @map("item_id")
+  item   Item   @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  tenantId String @default("default-tenant") @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([itemId])
+  @@map("predictive_stock_alerts")
+}
+
+// =============================================================================
+// SUPPORT TICKETS
+// =============================================================================
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model Ticket {
+  id       String         @id @default(cuid())
+  subject  String
+  body     String
+  status   TicketStatus   @default(OPEN)
+  priority TicketPriority @default(NORMAL)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("tickets")
+}

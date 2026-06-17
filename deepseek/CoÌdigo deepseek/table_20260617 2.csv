@@ -1,0 +1,4 @@
+Pantalla,Funcionalidades
+SuperAdminPanel,"Toggle switches con optimistic updates, contador de módulos activos, estados de carga/error/éxito, licencia en tiempo real"
+RecursosHumanos,"Tabla responsive con empleados, modal de alta con validación completa, toggle de comisión con campo condicional, modal de detalle, formateo de moneda y porcentajes"
+Tesoreria,"Tarjeta de saldo consolidado, grid de cuentas con saldo, modal de nuevo movimiento con selectores visuales de tipo, validación de saldo suficiente, modal de historial de movimientos con badges de tipo"

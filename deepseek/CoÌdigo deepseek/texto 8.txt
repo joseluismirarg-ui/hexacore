@@ -1,0 +1,264 @@
+import { Request, Response, NextFunction } from 'express';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+export class ManufacturingController {
+  /**
+   * POST /api/manufacturing/bom
+   * Crear Receta (Bill of Materials)
+   */
+  static async createBOM(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { productId, components } = req.body;
+
+      if (!productId?.trim()) {
+        res.status(400).json({ error: 'productId es requerido' });
+        return;
+      }
+
+      if (!components || !Array.isArray(components) || components.length === 0) {
+        res.status(400).json({ error: 'components debe ser un array con al menos un elemento' });
+        return;
+      }
+
+      // Validar que el producto exista
+      const product = await prisma.product.findUnique({
+        where: { id: productId },
+      });
+
+      if (!product) {
+        res.status(404).json({ error: 'Producto no encontrado' });
+        return;
+      }
+
+      // Verificar si ya existe BOM para este producto
+      const existingBOM = await prisma.billOfMaterials.findUnique({
+        where: { productId },
+      });
+
+      if (existingBOM) {
+        res.status(409).json({ error: 'Este producto ya tiene una receta asignada' });
+        return;
+      }
+
+      // Crear BOM con sus componentes en transacción
+      const bom = await prisma.$transaction(async (tx) => {
+        const newBOM = await tx.billOfMaterials.create({
+          data: {
+            productId,
+            components: {
+              create: components.map((comp: any) => ({
+                componentId: comp.componentId,
+                quantityRequired: parseInt(comp.quantityRequired) || 1,
+              })),
+            },
+          },
+          include: {
+            components: {
+              include: {
+                component: true,
+              },
+            },
+            product: true,
+          },
+        });
+
+        return newBOM;
+      });
+
+      res.status(201).json(bom);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/manufacturing/boms
+   * Listar todas las recetas
+   */
+  static async getBOMs(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const boms = await prisma.billOfMaterials.findMany({
+        include: {
+          product: true,
+          components: {
+            include: {
+              component: true,
+            },
+          },
+        },
+      });
+
+      res.json(boms);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/manufacturing/bom/:productId
+   */
+  static async getBOMByProduct(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { productId } = req.params;
+      const bom = await prisma.billOfMaterials.findUnique({
+        where: { productId },
+        include: {
+          product: true,
+          components: {
+            include: {
+              component: true,
+            },
+          },
+        },
+      });
+
+      if (!bom) {
+        res.status(404).json({ error: 'Receta no encontrada para este producto' });
+        return;
+      }
+
+      res.json(bom);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/manufacturing/production-order
+   * Procesar Orden de Producción:
+   * - Descontar insumos del almacén
+   * - Sumar producto terminado al almacén
+   */
+  static async processProductionOrder(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const { productId, quantity, warehouseId } = req.body;
+
+      if (!productId?.trim() || !quantity || !warehouseId?.trim()) {
+        res.status(400).json({ error: 'productId, quantity y warehouseId son requeridos' });
+        return;
+      }
+
+      const productionQty = parseInt(quantity);
+      if (isNaN(productionQty) || productionQty <= 0) {
+        res.status(400).json({ error: 'quantity debe ser un número positivo' });
+        return;
+      }
+
+      // Buscar BOM del producto
+      const bom = await prisma.billOfMaterials.findUnique({
+        where: { productId },
+        include: {
+          components: {
+            include: {
+              component: true,
+            },
+          },
+        },
+      });
+
+      if (!bom) {
+        res.status(400).json({ error: 'No existe receta para este producto' });
+        return;
+      }
+
+      // Verificar stock disponible de cada componente
+      const stockIssues: string[] = [];
+
+      for (const bomItem of bom.components) {
+        const stock = await prisma.warehouseStock.findUnique({
+          where: {
+            warehouseId_productId: {
+              warehouseId,
+              productId: bomItem.componentId,
+            },
+          },
+        });
+
+        const requiredQty = bomItem.quantityRequired * productionQty;
+        const currentStock = stock?.quantity || 0;
+
+        if (currentStock < requiredQty) {
+          stockIssues.push(
+            `${bomItem.component.name || bomItem.componentId}: requiere ${requiredQty}, disponible ${currentStock}`
+          );
+        }
+      }
+
+      if (stockIssues.length > 0) {
+        res.status(400).json({
+          error: 'Stock insuficiente de componentes',
+          details: stockIssues,
+        });
+        return;
+      }
+
+      // Procesar producción en transacción
+      const result = await prisma.$transaction(async (tx) => {
+        // 1. Descontar componentes
+        for (const bomItem of bom.components) {
+          const requiredQty = bomItem.quantityRequired * productionQty;
+
+          await tx.warehouseStock.update({
+            where: {
+              warehouseId_productId: {
+                warehouseId,
+                productId: bomItem.componentId,
+              },
+            },
+            data: {
+              quantity: {
+                decrement: requiredQty,
+              },
+            },
+          });
+        }
+
+        // 2. Sumar producto terminado
+        await tx.warehouseStock.upsert({
+          where: {
+            warehouseId_productId: {
+              warehouseId,
+              productId,
+            },
+          },
+          update: {
+            quantity: {
+              increment: productionQty,
+            },
+          },
+          create: {
+            warehouseId,
+            productId,
+            quantity: productionQty,
+          },
+        });
+
+        // 3. Obtener stock resultante
+        const updatedStock = await tx.warehouseStock.findMany({
+          where: { warehouseId },
+          include: { product: true },
+        });
+
+        return {
+          productionOrder: {
+            productId,
+            quantity: productionQty,
+            warehouseId,
+            status: 'COMPLETED',
+          },
+          updatedStock,
+        };
+      });
+
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+}

@@ -1,0 +1,41 @@
+import { Router } from 'express';
+import { TreasuryController } from '../controllers/treasury.controller';
+import { authenticate } from '../middlewares/auth.middleware';
+import { authorize } from '../middlewares/authorize.middleware';
+import { requireModule } from '../middlewares/license-initializer.middleware';
+
+const router = Router();
+
+router.post(
+  '/api/treasury/account',
+  authenticate,
+  authorize(['SUPER_ADMIN', 'ADMIN']),
+  requireModule('treasuryActive'),
+  TreasuryController.createAccount
+);
+
+router.get(
+  '/api/treasury/accounts',
+  authenticate,
+  authorize(['SUPER_ADMIN', 'ADMIN']),
+  requireModule('treasuryActive'),
+  TreasuryController.getAccounts
+);
+
+router.post(
+  '/api/treasury/movement',
+  authenticate,
+  authorize(['SUPER_ADMIN', 'ADMIN']),
+  requireModule('treasuryActive'),
+  TreasuryController.createMovement
+);
+
+router.get(
+  '/api/treasury/movements/:accountId',
+  authenticate,
+  authorize(['SUPER_ADMIN', 'ADMIN']),
+  requireModule('treasuryActive'),
+  TreasuryController.getMovements
+);
+
+export default router;

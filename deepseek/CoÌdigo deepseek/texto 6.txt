@@ -1,0 +1,22 @@
+import { Router } from 'express';
+import { LicenseController } from '../controllers/license.controller';
+import { authenticate } from '../middlewares/auth.middleware';
+import { authorize } from '../middlewares/authorize.middleware';
+
+const router = Router();
+
+router.get(
+  '/api/superadmin/license',
+  authenticate,
+  authorize(['SUPER_ADMIN']),
+  LicenseController.getLicense
+);
+
+router.put(
+  '/api/superadmin/license',
+  authenticate,
+  authorize(['SUPER_ADMIN']),
+  LicenseController.updateLicense
+);
+
+export default router;

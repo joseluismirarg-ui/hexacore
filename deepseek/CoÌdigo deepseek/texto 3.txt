@@ -1,0 +1,89 @@
+import { Request, Response, NextFunction } from 'express';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+/**
+ * MIDDLEWARE DE AUDITORÍA FORENSE
+ * Intercepta POST/PUT/DELETE y guarda registro síncrono
+ */
+export async function auditMiddleware(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  const originalJson = res.json.bind(res);
+
+  res.json = function (body: any) {
+    // Solo auditar métodos de escritura
+    if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
+      const userId = (req as any).user?.id || 'system';
+      const username = (req as any).user?.username || 'system';
+      const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
+
+      // Almacenar de forma asíncrona sin bloquear respuesta
+      prisma.auditLog
+        .create({
+          data: {
+            userId,
+            username,
+            action: req.method,
+            details: JSON.stringify({
+              path: req.originalUrl,
+              query: req.query,
+              params: req.params,
+              statusCode: res.statusCode,
+              timestamp: new Date().toISOString(),
+            }),
+            ipAddress,
+          },
+        })
+        .catch((err) => console.error('[AUDIT] Error registrando log:', err));
+    }
+
+    return originalJson(body);
+  };
+
+  next();
+}
+
+/**
+ * Interceptor Axios para Frontend (se exporta como string para inyección)
+ */
+export const axiosInterceptorCode = `
+import axios from 'axios';
+
+// Configurar interceptor para manejo de 401
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Token expirado o inválido
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      
+      // Redirigir a login si no está ya allí
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login?expired=true';
+      }
+    }
+    
+    if (error.response?.status === 403) {
+      console.error('Acceso denegado:', error.response.data?.error);
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
+// Configurar token automáticamente
+axios.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = \`Bearer \${token}\`;
+  }
+  return config;
+});
+
+export default axios;
+`;

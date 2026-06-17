@@ -1,0 +1,65 @@
+import { Request, Response, NextFunction } from 'express';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+/**
+ * FAIL-SAFE: Inicializa ModuleLicense si la tabla está vacía
+ * Se ejecuta al iniciar la aplicación
+ */
+export async function initializeLicense(): Promise<void> {
+  try {
+    const existing = await prisma.moduleLicense.count();
+    if (existing === 0) {
+      await prisma.moduleLicense.create({
+        data: {
+          erpActive: true,
+          posActive: true,
+          hrActive: false,
+          billingActive: false,
+          logisticsActive: false,
+          manufacturingActive: false,
+          treasuryActive: false,
+          reportsActive: false,
+        },
+      });
+      console.log('[LICENSE] Licencia por defecto inicializada');
+    }
+  } catch (error) {
+    console.error('[LICENSE] Error al inicializar licencia:', error);
+  }
+}
+
+/**
+ * Middleware para verificar módulo activo
+ */
+export function requireModule(
+  moduleKey:
+    | 'erpActive'
+    | 'posActive'
+    | 'hrActive'
+    | 'billingActive'
+    | 'logisticsActive'
+    | 'manufacturingActive'
+    | 'treasuryActive'
+    | 'reportsActive'
+) {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const license = await prisma.moduleLicense.findFirst();
+      if (!license) {
+        res.status(500).json({ error: 'Licencia no configurada' });
+        return;
+      }
+      if (!license[moduleKey]) {
+        res.status(403).json({
+          error: `Módulo ${moduleKey.replace('Active', '')} no está activo en su licencia`,
+        });
+        return;
+      }
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
+}

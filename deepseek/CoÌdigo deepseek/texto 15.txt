@@ -1,0 +1,35 @@
+import axios from 'axios';
+
+// Configurar interceptor para manejo de 401
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Token expirado o inválido
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      
+      // Redirigir a login si no está ya allí
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login?expired=true';
+      }
+    }
+    
+    if (error.response?.status === 403) {
+      console.error('Acceso denegado:', error.response.data?.error);
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
+// Configurar token automáticamente
+axios.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+export default axios;

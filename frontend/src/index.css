@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-gray-700/50;
+  }
+
+  body {
+    @apply bg-hc-bg text-gray-200 font-sans;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ── Custom scrollbar (dark mode) ────────────────────────────── */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-hc-bg;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-600 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-500;
+  }
+
+  /* ── Focus rings for keyboard ergonomics ─────────────────────── */
+  *:focus-visible {
+    @apply outline-2 outline-offset-2 outline-hc-cobalt;
+  }
+
+  /* ── Selection highlight ─────────────────────────────────────── */
+  ::selection {
+    @apply bg-hc-cobalt/30 text-white;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-hc-surface rounded-xl border border-gray-700/40 p-5;
+  }
+  .card-compact {
+    @apply bg-hc-surface rounded-lg border border-gray-700/40 p-3;
+  }
+  .input-field {
+    @apply w-full bg-hc-surface-dark border border-gray-600 rounded-lg px-3 py-2
+           text-sm text-gray-100 placeholder-gray-500
+           transition-colors duration-150
+           focus:border-hc-cobalt focus:ring-1 focus:ring-hc-cobalt focus:outline-none;
+  }
+  .table-row-hover {
+    @apply hover:bg-hc-surface-light/50 transition-colors duration-100;
+  }
+}
