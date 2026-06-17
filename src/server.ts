@@ -10,6 +10,7 @@ import { prisma } from "./lib/prisma";
 import bcrypt from "bcrypt";
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+const HOST = "0.0.0.0";
 
 async function bootstrap(): Promise<void> {
   try {
@@ -48,8 +49,8 @@ async function bootstrap(): Promise<void> {
       console.log("[DB]     Super Admin creado exitosamente. (admin@hexacore.com)");
     }
 
-    const server = app.listen(PORT, () => {
-      console.log(`[SERVER] Hexa Core API → puerto ${PORT}`);
+    const server = app.listen(PORT, HOST, () => {
+      console.log(`[SERVER] Hexa Core API → http://${HOST}:${PORT}`);
       console.log(
         `[SERVER] Entorno  : ${process.env.NODE_ENV ?? "development"}`
       );
