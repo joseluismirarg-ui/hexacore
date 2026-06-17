@@ -32,6 +32,7 @@ RUN npm ci
 
 # Copiar Prisma schema y generar cliente
 COPY prisma/ ./prisma/
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost/dummy"
 RUN npx prisma generate
 
 # Copiar el código fuente y compilar
