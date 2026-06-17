@@ -12,6 +12,9 @@ COPY frontend/package*.json ./
 RUN npm ci
 
 COPY frontend/ ./
+RUN npm install -g typescript
+RUN chmod +x node_modules/.bin/tsc || true
+RUN chmod +x node_modules/.bin/vite || true
 RUN npm run build
 
 # ------------------------------------------------------------------------------
@@ -34,6 +37,8 @@ RUN npx prisma generate
 # Copiar el código fuente y compilar
 COPY tsconfig.json ./
 COPY src/ ./src/
+RUN npm install -g typescript
+RUN chmod +x node_modules/.bin/tsc || true
 RUN npm run build
 
 # ------------------------------------------------------------------------------
