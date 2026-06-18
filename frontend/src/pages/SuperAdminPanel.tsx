@@ -6,12 +6,14 @@ export default function SuperAdminPanel() {
   const { data: licenseData, loading: loadingLicense, execute: reloadLicense } = useAsync(() => api.get('/api/admin/licenses'), true);
   const { data: usersData, loading: loadingUsers } = useAsync(() => api.get('/api/users'), true);
   const { data: statsData, loading: loadingStats } = useAsync(() => api.get('/api/dashboard'), true);
+  const { data: tenantsData, loading: loadingTenants } = useAsync(() => api.get('/api/admin/tenants'), true);
 
   const license: any = (licenseData as any)?.data || {};
   const users: any[] = (usersData as any)?.data || [];
   const stats: any = (statsData as any)?.data || {};
+  const tenants: any[] = (tenantsData as any)?.data || [];
 
-  const [activeTab, setActiveTab] = useState<'licencias' | 'usuarios' | 'sistema'>('licencias');
+  const [activeTab, setActiveTab] = useState<'licencias' | 'usuarios' | 'sistema' | 'empresas'>('licencias');
   const [toggling, setToggling] = useState(false);
 
   const handleToggleLicense = async (key: string, currentValue: boolean) => {
@@ -46,8 +48,8 @@ export default function SuperAdminPanel() {
       </div>
 
       <div className="border-b border-border">
-        <nav className="-mb-px flex space-x-8">
-          {(['licencias', 'usuarios', 'sistema'] as const).map((tab) => (
+        <nav className="-mb-px flex space-x-8 overflow-x-auto">
+          {(['empresas', 'licencias', 'usuarios', 'sistema'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -57,7 +59,7 @@ export default function SuperAdminPanel() {
                   : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
               }`}
             >
-              {tab === 'licencias' ? 'Módulos / Licencias' : tab === 'usuarios' ? 'Usuarios del Sistema' : 'Estado del Sistema'}
+              {tab === 'empresas' ? 'Empresas SaaS' : tab === 'licencias' ? 'Módulos / Licencias' : tab === 'usuarios' ? 'Usuarios del Sistema' : 'Estado del Sistema'}
             </button>
           ))}
         </nav>
@@ -80,6 +82,58 @@ export default function SuperAdminPanel() {
               <p className="text-xs text-muted-foreground">{mod.desc}</p>
             </div>
           ))}
+        </div>
+      )}
+
+      {activeTab === 'empresas' && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {tenants.map((t: any) => {
+              const sysConfig = t.systemConfigs?.[0] || {};
+              const userCount = t.users?.length || 0;
+              return (
+                <div key={t.id} className="rounded-xl border bg-card p-5 shadow-sm">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h3 className="font-bold text-lg">{t.name}</h3>
+                      <p className="text-xs text-muted-foreground">{t.industry} • Plan: {t.plan}</p>
+                    </div>
+                    <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded-full ${t.status === 'ACTIVE' ? 'bg-green-500/10 text-green-500' : 'bg-yellow-500/10 text-yellow-500'}`}>
+                      {t.status}
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-2 mt-4 text-sm text-muted-foreground">
+                    <div className="flex justify-between"><span className="font-medium">RFC:</span> <span>{sysConfig.companyRfc || 'N/A'}</span></div>
+                    <div className="flex justify-between"><span className="font-medium">Usuarios:</span> <span>{userCount} cuentas</span></div>
+                    <div className="flex justify-between"><span className="font-medium">Creado:</span> <span>{formatTimestamp(t.createdAt)}</span></div>
+                  </div>
+
+                  <div className="mt-6 pt-4 border-t flex gap-2">
+                    <button 
+                      onClick={async () => {
+                        try {
+                          const res = await api.post(`/api/admin/impersonate/${t.id}`);
+                          if (res.data?.token) {
+                            localStorage.setItem('hexa_token', res.data.token);
+                            window.location.href = '/dashboard';
+                          }
+                        } catch(e) { alert('Error al acceder al panel'); }
+                      }}
+                      className="flex-1 bg-primary text-primary-foreground py-2 text-sm font-medium rounded-md hover:bg-primary/90 transition-colors"
+                    >
+                      Acceder al Panel
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {tenants.length === 0 && (
+            <div className="p-8 text-center border-2 border-dashed rounded-xl text-muted-foreground">
+              No hay empresas registradas aún.
+            </div>
+          )}
         </div>
       )}
 

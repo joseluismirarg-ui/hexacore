@@ -6,6 +6,7 @@ import { ManufacturingController } from '../controllers/manufacturing.controller
 
 const router = Router();
 
+router.get('/bom', ManufacturingController.getBOMs);
 router.post('/bom', ManufacturingController.createBOM);
 router.post('/production-order', ManufacturingController.processProductionOrder);
 
