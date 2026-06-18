@@ -124,7 +124,7 @@ app.use('/api/products', authenticateToken, productRoutes);
 app.use('/api/payments', authenticateToken, paymentRoutes);
 app.use('/api/purchases', authenticateToken, purchaseRoutes);
 app.use('/api/invoices', authenticateToken, invoiceRoutes);
-app.use('/api/locations', authenticateToken, locationRoutes);
+app.use('/api/warehouses', authenticateToken, locationRoutes);
 app.use('/api/hr', authenticateToken, hrRoutes);
 app.use('/api/subscription', authenticateToken, subscriptionRoutes);
 app.use('/api/tickets', authenticateToken, ticketRoutes);
