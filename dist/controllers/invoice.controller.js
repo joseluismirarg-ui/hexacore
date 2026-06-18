@@ -8,6 +8,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.timbrarFactura = timbrarFactura;
 exports.listarFacturas = listarFacturas;
 exports.cancelarFactura = cancelarFactura;
+exports.facturacionMasiva = facturacionMasiva;
 const crypto_1 = require("crypto");
 const prisma_1 = require("../lib/prisma");
 const invoice_validator_1 = require("../validators/invoice.validator");
@@ -25,7 +26,7 @@ async function timbrarFactura(req, res, next) {
             prisma_1.prisma.transaction.findUnique({
                 where: { id: dto.transactionId },
                 include: {
-                    items: { include: { product: { select: { id: true, name: true, sku: true } } } },
+                    items: { include: { item: { select: { id: true, name: true, sku: true } } } },
                     user: { select: { id: true, name: true } },
                 },
             }),
@@ -165,6 +166,58 @@ async function cancelarFactura(req, res, next) {
             data: { status: 'CANCELADA' },
         });
         res.json({ success: true, data: cancelled });
+    }
+    catch (err) {
+        next(err);
+    }
+}
+// =============================================================================
+// POST /api/v1/facturas/masiva
+// Facturación Masiva y Complementos de Pago
+// =============================================================================
+async function facturacionMasiva(req, res, next) {
+    try {
+        const { startDate, endDate, rfc_receptor, regimen_fiscal, uso_cfdi } = req.body;
+        if (!startDate || !endDate || !rfc_receptor || !regimen_fiscal || !uso_cfdi) {
+            throw new errors_1.UnprocessableEntityError('Faltan parámetros requeridos para facturación masiva');
+        }
+        // Buscar transacciones completadas sin factura
+        const unbilledTransactions = await prisma_1.prisma.transaction.findMany({
+            where: {
+                createdAt: { gte: new Date(startDate), lte: new Date(endDate) },
+                status: 'COMPLETADO',
+                invoices: { none: {} }
+            },
+            include: { customer: true }
+        });
+        if (unbilledTransactions.length === 0) {
+            res.status(200).json({ success: true, message: 'No hay transacciones pendientes de facturar en ese periodo', data: [] });
+            return;
+        }
+        const createdInvoices = [];
+        const baseUrl = process.env.SAT_MOCK_BASE_URL || 'https://cfdi.hexacore.mx/mock';
+        for (const tx of unbilledTransactions) {
+            const uuid_sat = (0, crypto_1.randomUUID)().toUpperCase();
+            const invoice = await prisma_1.prisma.invoice.create({
+                data: {
+                    uuid_sat,
+                    rfc_receptor: tx.customer.rfc || rfc_receptor,
+                    regimen_fiscal,
+                    uso_cfdi,
+                    status: 'TIMBRADA',
+                    pdfUrl: `${baseUrl}/pdf/${uuid_sat}.pdf`,
+                    xmlUrl: `${baseUrl}/xml/${uuid_sat}.xml`,
+                    transactionId: tx.id,
+                    customerId: tx.customerId,
+                }
+            });
+            createdInvoices.push(invoice);
+        }
+        res.status(201).json({
+            success: true,
+            message: `Se timbraron ${createdInvoices.length} facturas masivamente.`,
+            data: createdInvoices
+        });
     }
     catch (err) {
         next(err);

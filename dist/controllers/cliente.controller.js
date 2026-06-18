@@ -1,14 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getClientesConsignacion = exports.createCustomer = exports.getClientes = void 0;
+exports.getClientesConsignacion = exports.updateCustomer = exports.createCustomer = exports.getClientes = void 0;
 const prisma_1 = require("../lib/prisma");
 const zod_1 = require("zod");
 const customerSchema = zod_1.z.object({
     companyName: zod_1.z.string().min(2),
-    rfc: zod_1.z.string().min(12).max(13).optional(),
-    email: zod_1.z.string().email().optional().or(zod_1.z.literal('')),
-    phone: zod_1.z.string().optional(),
+    rfc: zod_1.z.string().min(12).max(13).optional().or(zod_1.z.literal('').transform(() => undefined)),
+    email: zod_1.z.string().email().optional().or(zod_1.z.literal('').transform(() => undefined)),
+    phone: zod_1.z.string().optional().or(zod_1.z.literal('').transform(() => undefined)),
     creditLimit: zod_1.z.number().or(zod_1.z.string()).transform(val => Number(val)).optional().default(0),
+    creditDays: zod_1.z.number().or(zod_1.z.string()).transform(val => Number(val)).optional().default(0),
 });
 const getClientes = async (_req, res, next) => {
     try {
@@ -38,6 +39,21 @@ const createCustomer = async (req, res, next) => {
     }
 };
 exports.createCustomer = createCustomer;
+const updateCustomer = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const data = customerSchema.parse(req.body);
+        const customer = await prisma_1.prisma.customer.update({
+            where: { id },
+            data,
+        });
+        res.status(200).json({ success: true, data: customer });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.updateCustomer = updateCustomer;
 const getClientesConsignacion = async (_req, res, next) => {
     try {
         const customers = await prisma_1.prisma.customer.findMany({
@@ -51,7 +67,7 @@ const getClientesConsignacion = async (_req, res, next) => {
                     where: { tipo: 'CONSIGNACION_CLIENTE' },
                     include: {
                         inventoryStocks: {
-                            include: { product: true }
+                            include: { item: true }
                         }
                     }
                 }
@@ -67,7 +83,7 @@ const getClientesConsignacion = async (_req, res, next) => {
             else if (porcentajeUtilizado > 70)
                 estado = 'proximo_vencer';
             const skusConsignados = customer.inventoryLocations.flatMap(loc => loc.inventoryStocks.map(stock => ({
-                product: stock.product,
+                item: stock.item,
                 cantidad: stock.quantity
             })));
             return {

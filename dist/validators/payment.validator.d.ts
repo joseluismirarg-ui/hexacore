@@ -6,17 +6,17 @@ export declare const RegistrarPagoSchema: z.ZodObject<{
     transactionId: z.ZodOptional<z.ZodString>;
     notes: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
-    customerId: string;
     amount: string;
     method: "TRANSFERENCIA" | "EFECTIVO" | "CHEQUE" | "TARJETA";
-    transactionId?: string | undefined;
+    customerId: string;
     notes?: string | undefined;
+    transactionId?: string | undefined;
 }, {
-    customerId: string;
     amount: string;
     method: "TRANSFERENCIA" | "EFECTIVO" | "CHEQUE" | "TARJETA";
-    transactionId?: string | undefined;
+    customerId: string;
     notes?: string | undefined;
+    transactionId?: string | undefined;
 }>;
 export type RegistrarPagoDTO = z.infer<typeof RegistrarPagoSchema>;
 //# sourceMappingURL=payment.validator.d.ts.map

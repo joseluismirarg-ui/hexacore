@@ -9,10 +9,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const app_1 = __importDefault(require("./app"));
+const socket_1 = require("./lib/socket");
 const prisma_1 = require("./lib/prisma");
 const bcrypt_1 = __importDefault(require("bcrypt"));
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
-const HOST = process.env.HOST ?? "0.0.0.0";
+const PORT = 3000;
+const HOST = "0.0.0.0";
 async function bootstrap() {
     try {
         // ── Verificar conexión a PostgreSQL antes de abrir el puerto ────────────
@@ -23,6 +24,18 @@ async function bootstrap() {
         if (userCount === 0) {
             console.log("[DB]     Base de datos vacía detectada. Creando Super Admin inicial...");
             const passwordHash = await bcrypt_1.default.hash("AdminHexa2026", 10);
+            const defaultTenant = await prisma_1.prisma.tenant.upsert({
+                where: { id: "default-tenant" },
+                update: {},
+                create: {
+                    id: "default-tenant",
+                    name: "Hexa Core Global",
+                    industry: "SaaS",
+                    plan: "ENTERPRISE",
+                    status: "ACTIVE",
+                    expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+                }
+            });
             await prisma_1.prisma.user.create({
                 data: {
                     email: "admin@hexacore.com",
@@ -30,15 +43,18 @@ async function bootstrap() {
                     passwordHash,
                     role: "ADMIN",
                     isActive: true,
+                    tenantId: defaultTenant.id,
                 },
             });
             console.log("[DB]     Super Admin creado exitosamente. (admin@hexacore.com)");
         }
         const server = app_1.default.listen(PORT, HOST, () => {
-            console.log(`[SERVER] Hexa Core API → http://${HOST === "0.0.0.0" ? "localhost" : HOST}:${PORT}`);
+            console.log(`[SERVER] Hexa Core API → http://${HOST}:${PORT}`);
             console.log(`[SERVER] Entorno  : ${process.env.NODE_ENV ?? "development"}`);
             console.log(`[SERVER] Health   : http://localhost:${PORT}/health`);
         });
+        // Initialize WebSockets
+        (0, socket_1.initSocket)(server);
         // ── Graceful shutdown ───────────────────────────────────────────────────
         // Cerramos el servidor HTTP primero (deja de aceptar nuevas conexiones),
         // luego desconectamos Prisma para liberar el pool de conexiones.

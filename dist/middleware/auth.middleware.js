@@ -21,7 +21,7 @@ const authenticateToken = async (req, res, next) => {
             res.status(401).json({ success: false, message: 'Usuario no encontrado' });
             return;
         }
-        req.user = { id: user.id, role: user.role };
+        req.user = { id: user.id, role: user.role, tenantId: user.tenantId };
         next();
     }
     catch (error) {

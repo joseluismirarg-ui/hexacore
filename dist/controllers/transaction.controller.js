@@ -6,7 +6,7 @@
 // DECRETOS APLICADOS:
 // [D1] Precisión Decimal — Prisma.Decimal para todos los valores monetarios.
 // [D2] Idempotencia — busca UUID antes de abrir TX; HTTP 200 si ya existe.
-// [D3] Desnorm. sincrónica — Product.globalStock actualizado dentro de la TX.
+// [D3] Desnorm. sincrónica — Item.globalStock actualizado dentro de la TX.
 // [D4] Guard anti-race — updateMany con quantity: { gte: cantidad }.
 // [D5] currentDebt inicializado en código, no en BD.
 // =============================================================================
@@ -70,6 +70,24 @@ async function registrarTransaccion(req, res, next) {
                     `Disponible: $${saldoDisponible.toFixed(2)}, ` +
                     `Requerido: $${totalRequerido.toFixed(2)}`, "CREDITO_INSUFICIENTE");
             }
+            // Bloqueo por antigüedad de deuda (> 30 días)
+            if (customer.currentDebt.greaterThan(0)) {
+                const treintaDiasAtras = new Date();
+                treintaDiasAtras.setDate(treintaDiasAtras.getDate() - 30);
+                const salesLast30Days = await prisma_1.prisma.transaction.aggregate({
+                    where: {
+                        customerId: customer.id,
+                        tipo: { in: ["CREDITO", "CONSIGNACION"] },
+                        createdAt: { gte: treintaDiasAtras }
+                    },
+                    _sum: { total: true }
+                });
+                const sumSales = salesLast30Days._sum.total || new client_1.Prisma.Decimal(0);
+                if (customer.currentDebt.greaterThan(sumSales)) {
+                    const overdueAmount = customer.currentDebt.sub(sumSales);
+                    throw new errors_1.UnprocessableEntityError(`Bloqueo por morosidad. El cliente tiene un saldo vencido a más de 30 días por aprox. $${overdueAmount.toFixed(2)}. Favor de liquidar antes de emitir nuevo crédito.`, "CUENTA_BLOQUEADA_MOROSIDAD");
+                }
+            }
         }
         // ── Resolver ubicación de inventario ─────────────────────────────────────
         // Si el payload incluye locationId, se descuenta de esa ubicación.
@@ -85,11 +103,16 @@ async function registrarTransaccion(req, res, next) {
             locationId = dto.locationId;
         }
         else {
-            const almacenCentral = await prisma_1.prisma.inventoryLocation.findFirst({
+            let almacenCentral = await prisma_1.prisma.inventoryLocation.findFirst({
                 where: { tipo: "CENTRAL" },
             });
             if (!almacenCentral) {
-                throw new errors_1.InternalError("Almacén Central no configurado. Ejecuta el seed o crea una ubicación CENTRAL.");
+                almacenCentral = await prisma_1.prisma.inventoryLocation.create({
+                    data: {
+                        name: "Almacén Central",
+                        tipo: "CENTRAL",
+                    }
+                });
             }
             locationId = almacenCentral.id;
         }
@@ -112,7 +135,7 @@ async function registrarTransaccion(req, res, next) {
                     customerId: dto.customerId,
                     items: {
                         create: dto.items.map((item) => ({
-                            productId: item.productId,
+                            itemId: item.itemId,
                             cantidad: item.cantidad,
                             precioAplicado: new client_1.Prisma.Decimal(item.precioAplicado),
                         })),
@@ -121,7 +144,7 @@ async function registrarTransaccion(req, res, next) {
                 include: {
                     items: {
                         include: {
-                            product: {
+                            item: {
                                 select: { id: true, sku: true, name: true },
                             },
                         },
@@ -143,7 +166,7 @@ async function registrarTransaccion(req, res, next) {
                 const stockUpdateResult = await tx.inventoryStock.updateMany({
                     where: {
                         locationId: locationId,
-                        productId: item.productId,
+                        itemId: item.itemId,
                         quantity: { gte: item.cantidad }, // Guard: no permite stock negativo
                     },
                     data: {
@@ -155,18 +178,18 @@ async function registrarTransaccion(req, res, next) {
                     const stockActual = await tx.inventoryStock.findFirst({
                         where: {
                             locationId: locationId,
-                            productId: item.productId,
+                            itemId: item.itemId,
                         },
                         select: { quantity: true },
                     });
                     const disponible = stockActual?.quantity ?? 0;
-                    throw new errors_1.UnprocessableEntityError(`Stock insuficiente para el producto '${item.productId}'. ` +
+                    throw new errors_1.UnprocessableEntityError(`Stock insuficiente para el producto '${item.itemId}'. ` +
                         `Disponible: ${disponible}, Solicitado: ${item.cantidad}`, "STOCK_INSUFICIENTE");
                 }
-                // [D3] Desnormalización sincrónica: mantener Product.globalStock alineado
+                // [D3] Desnormalización sincrónica: mantener Item.globalStock alineado
                 // con la suma de InventoryStock.quantity de forma atómica.
-                await tx.product.update({
-                    where: { id: item.productId },
+                await tx.item.update({
+                    where: { id: item.itemId },
                     data: {
                         globalStock: { decrement: item.cantidad },
                     },
@@ -228,7 +251,7 @@ async function getTransaccion(req, res, next) {
             include: {
                 items: {
                     include: {
-                        product: {
+                        item: {
                             select: { id: true, sku: true, name: true, price: true },
                         },
                     },

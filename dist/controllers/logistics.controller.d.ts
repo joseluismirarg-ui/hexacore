@@ -1,6 +1,7 @@
-import { Request, Response, NextFunction } from 'express';
-export declare class LogisticsController {
-    static createTransfer(req: Request, res: Response, next: NextFunction): Promise<void>;
-    static receiveTransfer(req: Request, res: Response, next: NextFunction): Promise<void>;
-}
+import { Request, Response } from "express";
+export declare const LogisticsController: {
+    createTransfer: (req: Request, res: Response) => Promise<void>;
+    receiveTransfer: (req: Request, res: Response) => Promise<void>;
+    optimizeRoutes: (_req: Request, res: Response) => Promise<void>;
+};
 //# sourceMappingURL=logistics.controller.d.ts.map

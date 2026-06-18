@@ -29,18 +29,47 @@ const getDashboardMetrics = async (_req, res, next) => {
             _sum: { currentDebt: true }
         });
         const carteraVencida = customersDebt._sum.currentDebt?.toNumber() || 0;
-        // Eficiencia de Cobranza (Calculado de forma mock o por una fórmula de la empresa)
-        const eficienciaCobranza = 85;
-        // Weekly flow data
-        const weekly = [
-            { dia: 'Lun', ventas: 1200, cobros: 800 },
-            { dia: 'Mar', ventas: 1500, cobros: 1000 },
-            { dia: 'Mié', ventas: 900, cobros: 750 },
-            { dia: 'Jue', ventas: 2100, cobros: 1500 },
-            { dia: 'Vie', ventas: 1800, cobros: 1200 },
-            { dia: 'Sáb', ventas: 2500, cobros: 2000 },
+        // Eficiencia de Cobranza (Cobrado vs (Deuda + Cobrado))
+        const totalPayments = await prisma_1.prisma.payment.aggregate({ _sum: { amount: true } });
+        const paid = totalPayments._sum.amount?.toNumber() || 0;
+        const totalDebt = carteraVencida;
+        const eficienciaCobranza = totalDebt + paid > 0 ? Math.round((paid / (totalDebt + paid)) * 100) : 0;
+        // Weekly flow data - Dynamic
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1)); // Lunes
+        startOfWeek.setHours(0, 0, 0, 0);
+        const txsThisWeek = await prisma_1.prisma.transaction.findMany({
+            where: { createdAt: { gte: startOfWeek } },
+            select: { createdAt: true, total: true }
+        });
+        // We would fetch payments here as well for "cobros", assuming for now transactions as both or just simple mock distribution for payments
+        const paymentsThisWeek = await prisma_1.prisma.payment.findMany({
+            where: { date: { gte: startOfWeek } },
+            select: { date: true, amount: true }
+        });
+        const daysMap = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+        const weeklyData = [
+            { dia: 'Lun', ventas: 0, cobros: 0 },
+            { dia: 'Mar', ventas: 0, cobros: 0 },
+            { dia: 'Mié', ventas: 0, cobros: 0 },
+            { dia: 'Jue', ventas: 0, cobros: 0 },
+            { dia: 'Vie', ventas: 0, cobros: 0 },
+            { dia: 'Sáb', ventas: 0, cobros: 0 },
             { dia: 'Dom', ventas: 0, cobros: 0 },
         ];
+        txsThisWeek.forEach(tx => {
+            const dayName = daysMap[tx.createdAt.getDay()];
+            const entry = weeklyData.find(w => w.dia === dayName);
+            if (entry)
+                entry.ventas += tx.total.toNumber();
+        });
+        paymentsThisWeek.forEach(p => {
+            const dayName = daysMap[p.date.getDay()];
+            const entry = weeklyData.find(w => w.dia === dayName);
+            if (entry)
+                entry.cobros += p.amount.toNumber();
+        });
+        const weekly = weeklyData;
         // Audit logs (últimos 20)
         const logs = await prisma_1.prisma.auditLog.findMany({
             include: { user: { select: { id: true, name: true, role: true } } },

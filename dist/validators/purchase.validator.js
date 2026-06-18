@@ -12,7 +12,7 @@ const decimalString = (label) => zod_1.z
     message: `${label} debe ser un decimal positivo con máximo 4 decimales`,
 });
 exports.PurchaseOrderItemSchema = zod_1.z.object({
-    productId: zod_1.z.string().cuid({ message: 'productId debe ser un CUID válido' }),
+    itemId: zod_1.z.string().cuid({ message: 'itemId debe ser un CUID válido' }),
     cantidad: zod_1.z
         .number({ invalid_type_error: 'cantidad debe ser un número' })
         .int()

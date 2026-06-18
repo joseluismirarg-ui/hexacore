@@ -29,6 +29,7 @@ import OnboardingWizard from '@/pages/OnboardingWizard';
 import LandlordDashboard from '@/pages/LandlordDashboard';
 import PasarelaSuscripcion from '@/pages/PasarelaSuscripcion';
 import AdminSupport from '@/pages/AdminSupport';
+import TruckDashboard from '@/pages/TruckDashboard';
 
 // Wrapper para layout protegido
 function ProtectedLayout() {
@@ -75,6 +76,7 @@ export default function App() {
             <Route path="/productos" element={<CatalogoProductos />} />
             <Route path="/almacenes" element={<GestionAlmacenes />} />
             <Route path="/manufactura" element={<Manufactura />} />
+            <Route path="/tms" element={<TruckDashboard />} />
 
             {/* ── RRHH & CRM ─────────────────── */}
             <Route path="/clientes" element={<DirectorioClientes />} />

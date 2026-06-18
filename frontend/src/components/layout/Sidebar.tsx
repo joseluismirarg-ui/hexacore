@@ -21,6 +21,7 @@ import {
   UserCheck,
   Landmark,
   Shield,
+  Truck,
 } from 'lucide-react';
 
 export function Sidebar() {
@@ -71,6 +72,13 @@ export function Sidebar() {
         { to: '/kardex', label: 'Logística Kardex', icon: ArrowLeftRight, roles: ['ADMIN', 'ALMACENISTA', 'VENDEDOR'], moduleKey: 'logisticsActive' },
         { to: '/productos', label: 'Catálogo Productos', icon: PackageSearch, roles: ['ADMIN', 'ALMACENISTA', 'VENDEDOR'] },
         { to: '/manufactura', label: 'Manufactura', icon: Hexagon, roles: ['ADMIN'], moduleKey: 'manufacturingActive' },
+      ],
+    },
+    {
+      label: 'Logística & TMS',
+      allowedRoles: ['ADMIN'],
+      items: [
+        { to: '/tms', label: 'Control TMS (Trucks)', icon: Truck, roles: ['ADMIN'] },
       ],
     },
     {

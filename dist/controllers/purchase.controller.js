@@ -10,6 +10,7 @@ exports.getOrdenCompra = getOrdenCompra;
 exports.recibirMercancia = recibirMercancia;
 exports.listarProveedores = listarProveedores;
 exports.crearProveedor = crearProveedor;
+exports.generateMRPRecommendations = generateMRPRecommendations;
 const client_1 = require("@prisma/client");
 const prisma_1 = require("../lib/prisma");
 const purchase_validator_1 = require("../validators/purchase.validator");
@@ -25,13 +26,13 @@ async function crearOrdenCompra(req, res, next) {
         if (!supplier)
             throw new errors_1.NotFoundError(`Proveedor '${dto.supplierId}' no encontrado`);
         // Validar que todos los productos existan
-        const productIds = dto.items.map((i) => i.productId);
-        const products = await prisma_1.prisma.product.findMany({
+        const productIds = dto.items.map((i) => i.itemId);
+        const items = await prisma_1.prisma.item.findMany({
             where: { id: { in: productIds } },
             select: { id: true, name: true },
         });
-        if (products.length !== productIds.length) {
-            const foundIds = products.map((p) => p.id);
+        if (items.length !== productIds.length) {
+            const foundIds = items.map((p) => p.id);
             const missing = productIds.filter((id) => !foundIds.includes(id));
             throw new errors_1.NotFoundError(`Productos no encontrados: ${missing.join(', ')}`);
         }
@@ -47,7 +48,7 @@ async function crearOrdenCompra(req, res, next) {
                 status: 'PENDIENTE',
                 items: {
                     create: dto.items.map((item) => ({
-                        productId: item.productId,
+                        itemId: item.itemId,
                         cantidad: item.cantidad,
                         costUnit: new client_1.Prisma.Decimal(item.costUnit),
                     })),
@@ -55,7 +56,7 @@ async function crearOrdenCompra(req, res, next) {
             },
             include: {
                 supplier: { select: { id: true, name: true, rfc: true } },
-                items: { include: { product: { select: { id: true, sku: true, name: true } } } },
+                items: { include: { item: { select: { id: true, sku: true, name: true } } } },
             },
         });
         res.status(201).json({ success: true, data: order });
@@ -113,7 +114,7 @@ async function getOrdenCompra(req, res, next) {
             where: { id: req.params.id },
             include: {
                 supplier: true,
-                items: { include: { product: true } },
+                items: { include: { item: true } },
             },
         });
         if (!order)
@@ -136,7 +137,7 @@ async function recibirMercancia(req, res, next) {
         // Pre-validaciones
         const order = await prisma_1.prisma.purchaseOrder.findUnique({
             where: { id },
-            include: { items: { include: { product: true } } },
+            include: { items: { include: { item: true } } },
         });
         if (!order)
             throw new errors_1.NotFoundError(`Orden de compra '${id}' no encontrada`);
@@ -168,39 +169,45 @@ async function recibirMercancia(req, res, next) {
                 data: { status: 'RECIBIDA', receivedAt: new Date() },
                 include: {
                     supplier: { select: { id: true, name: true } },
-                    items: { include: { product: { select: { id: true, sku: true, name: true } } } },
+                    items: { include: { item: { select: { id: true, sku: true, name: true } } } },
                 },
             });
             // Pasos 2, 3, 4: Por cada ítem
-            for (const item of order.items) {
+            for (const orderItem of order.items) {
+                const reqItems = req.body.items || [];
+                const dtoItem = reqItems.find((i) => i.itemId === orderItem.itemId);
+                if (!dtoItem)
+                    continue;
                 // Sumar stock en destino
                 await tx.inventoryStock.upsert({
                     where: {
-                        locationId_productId: {
+                        locationId_itemId: {
                             locationId: dto.locationId,
-                            productId: item.productId,
+                            itemId: orderItem.itemId,
                         },
                     },
                     create: {
                         locationId: dto.locationId,
-                        productId: item.productId,
-                        quantity: item.cantidad,
+                        itemId: orderItem.itemId,
+                        quantity: dtoItem.cantidad,
+                        lotNumber: dtoItem.lotNumber || null,
+                        expirationDate: dtoItem.expirationDate ? new Date(dtoItem.expirationDate) : null
                     },
-                    update: { quantity: { increment: item.cantidad } },
+                    update: { quantity: { increment: dtoItem.cantidad } },
                 });
                 // Actualizar globalStock desnormalizado
-                await tx.product.update({
-                    where: { id: item.productId },
-                    data: { globalStock: { increment: item.cantidad } },
+                await tx.item.update({
+                    where: { id: orderItem.itemId },
+                    data: { globalStock: { increment: dtoItem.cantidad } },
                 });
                 // Registrar en Kardex
                 await tx.kardexMovement.create({
                     data: {
                         tipo: 'ENTRADA_COMPRA',
-                        cantidad: item.cantidad,
+                        cantidad: dtoItem.cantidad,
                         locationDestinoId: dto.locationId,
                         locationOrigenId: null,
-                        productId: item.productId,
+                        itemId: orderItem.itemId,
                         userId: dto.userId,
                         referenceId: id,
                         notes: dto.notes ?? `Recepción de OC ${id}`,
@@ -219,9 +226,11 @@ async function recibirMercancia(req, res, next) {
 // GET /api/v1/compras/proveedores
 // Listado de proveedores
 // =============================================================================
-async function listarProveedores(_req, res, next) {
+async function listarProveedores(req, res, next) {
     try {
+        const tenantId = req.tenant?.id;
         const suppliers = await prisma_1.prisma.supplier.findMany({
+            where: tenantId ? { tenantId } : undefined,
             orderBy: { name: 'asc' },
             include: { _count: { select: { purchaseOrders: true } } },
         });
@@ -242,8 +251,37 @@ const supplierSchema = zod_1.z.object({
 async function crearProveedor(req, res, next) {
     try {
         const data = supplierSchema.parse(req.body);
-        const supplier = await prisma_1.prisma.supplier.create({ data });
+        const tenantId = req.tenant?.id;
+        const supplier = await prisma_1.prisma.supplier.create({
+            data: {
+                ...data,
+                tenantId
+            }
+        });
         res.status(201).json({ success: true, data: supplier });
+    }
+    catch (err) {
+        next(err);
+    }
+}
+// =============================================================================
+// GET /api/v1/compras/mrp/recommendations
+// Sugerencias de Reabastecimiento Automático (MRP)
+// =============================================================================
+async function generateMRPRecommendations(_req, res, next) {
+    try {
+        // Buscar todos los productos
+        const allProducts = await prisma_1.prisma.item.findMany({
+            select: { id: true, sku: true, name: true, globalStock: true, reorderPoint: true, cost: true }
+        });
+        const recommendations = allProducts
+            .filter(p => p.globalStock <= p.reorderPoint)
+            .map(p => ({
+            ...p,
+            suggestedOrderQty: Math.max(p.reorderPoint * 2 - p.globalStock, 10), // Sugerencia de traer suficiente para doblar el punto de reorden
+            estimatedCost: new client_1.Prisma.Decimal(Math.max(p.reorderPoint * 2 - p.globalStock, 10)).mul(p.cost)
+        }));
+        res.status(200).json({ success: true, data: recommendations });
     }
     catch (err) {
         next(err);

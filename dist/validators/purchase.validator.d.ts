@@ -1,36 +1,36 @@
 import { z } from 'zod';
 export declare const PurchaseOrderItemSchema: z.ZodObject<{
-    productId: z.ZodString;
+    itemId: z.ZodString;
     cantidad: z.ZodNumber;
     costUnit: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    productId: string;
+    itemId: string;
     cantidad: number;
     costUnit: string;
 }, {
-    productId: string;
+    itemId: string;
     cantidad: number;
     costUnit: string;
 }>;
 export declare const CrearPurchaseOrderSchema: z.ZodObject<{
     supplierId: z.ZodString;
     items: z.ZodArray<z.ZodObject<{
-        productId: z.ZodString;
+        itemId: z.ZodString;
         cantidad: z.ZodNumber;
         costUnit: z.ZodString;
     }, "strip", z.ZodTypeAny, {
-        productId: string;
+        itemId: string;
         cantidad: number;
         costUnit: string;
     }, {
-        productId: string;
+        itemId: string;
         cantidad: number;
         costUnit: string;
     }>, "many">;
     notes: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     items: {
-        productId: string;
+        itemId: string;
         cantidad: number;
         costUnit: string;
     }[];
@@ -38,7 +38,7 @@ export declare const CrearPurchaseOrderSchema: z.ZodObject<{
     notes?: string | undefined;
 }, {
     items: {
-        productId: string;
+        itemId: string;
         cantidad: number;
         costUnit: string;
     }[];
@@ -50,12 +50,12 @@ export declare const RecibirMercanciaSchema: z.ZodObject<{
     locationId: z.ZodString;
     notes: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
-    userId: string;
     locationId: string;
+    userId: string;
     notes?: string | undefined;
 }, {
-    userId: string;
     locationId: string;
+    userId: string;
     notes?: string | undefined;
 }>;
 export type CrearPurchaseOrderDTO = z.infer<typeof CrearPurchaseOrderSchema>;

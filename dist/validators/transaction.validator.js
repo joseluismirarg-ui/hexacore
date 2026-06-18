@@ -10,7 +10,7 @@ const zod_1 = require("zod");
 // Línea de item de transacción
 // ---------------------------------------------------------------------------
 const TransactionLineSchema = zod_1.z.object({
-    productId: zod_1.z.string().cuid({ message: "productId debe ser un CUID válido" }),
+    itemId: zod_1.z.string().cuid({ message: "itemId debe ser un CUID válido" }),
     cantidad: zod_1.z
         .number({
         required_error: "cantidad es requerida",

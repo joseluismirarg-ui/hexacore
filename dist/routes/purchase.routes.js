@@ -8,6 +8,7 @@ const purchase_controller_1 = require("../controllers/purchase.controller");
 const router = (0, express_1.Router)();
 router.get('/proveedores', purchase_controller_1.listarProveedores);
 router.post('/proveedores', purchase_controller_1.crearProveedor);
+router.get('/mrp/recommendations', purchase_controller_1.generateMRPRecommendations);
 router.get('/', purchase_controller_1.listarOrdenesCompra);
 router.post('/', purchase_controller_1.crearOrdenCompra);
 router.get('/:id', purchase_controller_1.getOrdenCompra);

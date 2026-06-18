@@ -25,7 +25,7 @@ async function getCamiones(_req, res, next) {
             include: {
                 inventoryStocks: {
                     include: {
-                        product: {
+                        item: {
                             select: { id: true, sku: true, name: true, price: true },
                         },
                     },
@@ -49,20 +49,20 @@ async function getLiquidacion(req, res, next) {
             where: { id: req.params.id },
             include: {
                 inventoryStocks: {
-                    include: { product: true },
+                    include: { item: true },
                 },
             },
         });
         if (!camion)
             throw new errors_1.NotFoundError(`Camión '${req.params.id}' no encontrado`);
         const productos = camion.inventoryStocks.map((s) => {
-            const precio = s.product.price.toNumber();
+            const precio = s.item.price.toNumber();
             return {
-                product: {
-                    id: s.product.id,
-                    sku: s.product.sku,
-                    name: s.product.name,
-                    price: s.product.price.toString(),
+                item: {
+                    id: s.item.id,
+                    sku: s.item.sku,
+                    name: s.item.name,
+                    price: s.item.price.toString(),
                 },
                 cargado: s.quantity,
                 devuelto: 0,
@@ -92,18 +92,24 @@ async function getLiquidacion(req, res, next) {
 // =============================================================================
 async function getAlmacenes(_req, res, next) {
     try {
-        const almacenes = await prisma_1.prisma.inventoryLocation.findMany({
-            where: { tipo: { in: ['CENTRAL', 'MOVIL'] } },
+        const almacenes = await prisma_1.prisma.location.findMany({
             include: {
-                inventoryStocks: {
+                inventories: {
                     include: {
-                        product: { select: { id: true, sku: true, name: true, globalStock: true } },
+                        item: { select: { id: true, sku: true, name: true, globalStock: true } },
                     },
+                    take: 10,
                 },
             },
             orderBy: { name: 'asc' },
         });
-        res.json({ success: true, data: almacenes });
+        const data = almacenes.map((w) => ({
+            id: w.id,
+            name: w.name,
+            tipo: 'CENTRAL',
+            inventoryStocks: w.inventories,
+        }));
+        res.json({ success: true, data });
     }
     catch (err) {
         next(err);
@@ -117,14 +123,14 @@ async function registrarTraspaso(req, res, next) {
     try {
         const dto = inventory_validator_1.TraspasoSchema.parse(req.body);
         // Pre-validaciones fuera de TX para mensajes de error precisos
-        const [product, origen, destino, usuario] = await Promise.all([
-            prisma_1.prisma.product.findUnique({ where: { id: dto.productId } }),
+        const [item, origen, destino, usuario] = await Promise.all([
+            prisma_1.prisma.item.findUnique({ where: { id: dto.itemId } }),
             prisma_1.prisma.inventoryLocation.findUnique({ where: { id: dto.locationOrigenId } }),
             prisma_1.prisma.inventoryLocation.findUnique({ where: { id: dto.locationDestinoId } }),
             prisma_1.prisma.user.findUnique({ where: { id: dto.userId } }),
         ]);
-        if (!product)
-            throw new errors_1.NotFoundError(`Producto '${dto.productId}' no encontrado`);
+        if (!item)
+            throw new errors_1.NotFoundError(`Producto '${dto.itemId}' no encontrado`);
         if (!origen)
             throw new errors_1.NotFoundError(`Almacén origen '${dto.locationOrigenId}' no encontrado`);
         if (!destino)
@@ -142,14 +148,14 @@ async function registrarTraspaso(req, res, next) {
             const originUpdate = await tx.inventoryStock.updateMany({
                 where: {
                     locationId: dto.locationOrigenId,
-                    productId: dto.productId,
+                    itemId: dto.itemId,
                     quantity: { gte: dto.cantidad },
                 },
                 data: { quantity: { decrement: dto.cantidad } },
             });
             if (originUpdate.count === 0) {
                 const stockOrigen = await tx.inventoryStock.findFirst({
-                    where: { locationId: dto.locationOrigenId, productId: dto.productId },
+                    where: { locationId: dto.locationOrigenId, itemId: dto.itemId },
                     select: { quantity: true },
                 });
                 const disponible = stockOrigen?.quantity ?? 0;
@@ -158,14 +164,14 @@ async function registrarTraspaso(req, res, next) {
             // Paso 2: Incrementar destino (upsert — puede no existir el registro)
             await tx.inventoryStock.upsert({
                 where: {
-                    locationId_productId: {
+                    locationId_itemId: {
                         locationId: dto.locationDestinoId,
-                        productId: dto.productId,
+                        itemId: dto.itemId,
                     },
                 },
                 create: {
                     locationId: dto.locationDestinoId,
-                    productId: dto.productId,
+                    itemId: dto.itemId,
                     quantity: dto.cantidad,
                 },
                 update: { quantity: { increment: dto.cantidad } },
@@ -177,12 +183,12 @@ async function registrarTraspaso(req, res, next) {
                     cantidad: dto.cantidad,
                     locationOrigenId: dto.locationOrigenId,
                     locationDestinoId: dto.locationDestinoId,
-                    productId: dto.productId,
+                    itemId: dto.itemId,
                     userId: dto.userId,
                     notes: dto.notes,
                 },
                 include: {
-                    product: { select: { id: true, sku: true, name: true } },
+                    item: { select: { id: true, sku: true, name: true } },
                     user: { select: { id: true, name: true } },
                 },
             });
@@ -195,30 +201,30 @@ async function registrarTraspaso(req, res, next) {
     }
 }
 // =============================================================================
-// GET /api/v1/inventario/kardex/:productId
+// GET /api/v1/inventario/kardex/:itemId
 // Historial inmutable de movimientos de un producto (paginado)
 // =============================================================================
 async function getKardex(req, res, next) {
     try {
-        const { productId } = req.params;
+        const { itemId } = req.params;
         const { page = '1', limit = '50' } = req.query;
         const take = Math.min(parseInt(limit, 10) || 50, 200);
         const skip = (Math.max(parseInt(page, 10) || 1, 1) - 1) * take;
-        const product = await prisma_1.prisma.product.findUnique({ where: { id: productId } });
-        if (!product)
-            throw new errors_1.NotFoundError(`Producto '${productId}' no encontrado`);
+        const item = await prisma_1.prisma.item.findUnique({ where: { id: itemId } });
+        if (!item)
+            throw new errors_1.NotFoundError(`Producto '${itemId}' no encontrado`);
         const [movements, total] = await Promise.all([
             prisma_1.prisma.kardexMovement.findMany({
-                where: { productId },
+                where: { itemId },
                 orderBy: { timestamp: 'desc' },
                 skip,
                 take,
                 include: {
-                    product: { select: { id: true, sku: true, name: true } },
+                    item: { select: { id: true, sku: true, name: true } },
                     user: { select: { id: true, name: true } },
                 },
             }),
-            prisma_1.prisma.kardexMovement.count({ where: { productId } }),
+            prisma_1.prisma.kardexMovement.count({ where: { itemId } }),
         ]);
         res.json({
             success: true,
@@ -253,7 +259,7 @@ async function getAllKardex(req, res, next) {
                 skip,
                 take,
                 include: {
-                    product: { select: { id: true, sku: true, name: true } },
+                    item: { select: { id: true, sku: true, name: true } },
                     user: { select: { id: true, name: true } },
                 },
             }),

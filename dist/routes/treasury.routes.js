@@ -49,5 +49,9 @@ router.get('/accounts/:id', async (req, res, next) => {
 });
 // POST /api/treasury/movements — Registrar un movimiento bancario (usa StringMath)
 router.post('/movements', treasury_controller_1.TreasuryController.createMovement);
+// GET /api/treasury/reconciliation — Conciliación Bancaria Automática
+router.get('/reconciliation', treasury_controller_1.TreasuryController.getReconciliation);
+// POST /api/treasury/cxp/pay — Cuentas por Pagar a Proveedor
+router.post('/cxp/pay', treasury_controller_1.TreasuryController.paySupplier);
 exports.default = router;
 //# sourceMappingURL=treasury.routes.js.map

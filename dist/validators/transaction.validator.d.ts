@@ -6,39 +6,39 @@ export declare const RegistrarTransaccionSchema: z.ZodObject<{
     locationId: z.ZodOptional<z.ZodString>;
     total: z.ZodNumber;
     items: z.ZodArray<z.ZodObject<{
-        productId: z.ZodString;
+        itemId: z.ZodString;
         cantidad: z.ZodNumber;
         precioAplicado: z.ZodNumber;
     }, "strip", z.ZodTypeAny, {
-        productId: string;
+        itemId: string;
         cantidad: number;
         precioAplicado: number;
     }, {
-        productId: string;
+        itemId: string;
         cantidad: number;
         precioAplicado: number;
     }>, "many">;
 }, "strip", z.ZodTypeAny, {
+    items: {
+        itemId: string;
+        cantidad: number;
+        precioAplicado: number;
+    }[];
     tipo: "VENTA_DIRECTA" | "CREDITO" | "CONSIGNACION";
     customerId: string;
     userId: string;
     total: number;
-    items: {
-        productId: string;
-        cantidad: number;
-        precioAplicado: number;
-    }[];
     locationId?: string | undefined;
 }, {
+    items: {
+        itemId: string;
+        cantidad: number;
+        precioAplicado: number;
+    }[];
     tipo: "VENTA_DIRECTA" | "CREDITO" | "CONSIGNACION";
     customerId: string;
     userId: string;
     total: number;
-    items: {
-        productId: string;
-        cantidad: number;
-        precioAplicado: number;
-    }[];
     locationId?: string | undefined;
 }>;
 export type RegistrarTransaccionDTO = z.infer<typeof RegistrarTransaccionSchema>;

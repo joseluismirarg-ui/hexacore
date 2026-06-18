@@ -10,6 +10,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const helmet_1 = __importDefault(require("helmet"));
 const cors_1 = __importDefault(require("cors"));
+const path_1 = __importDefault(require("path"));
 const errorHandler_1 = require("./middleware/errorHandler");
 const transaction_routes_1 = __importDefault(require("./routes/transaction.routes"));
 const cobranza_routes_1 = __importDefault(require("./routes/cobranza.routes"));
@@ -17,15 +18,28 @@ const dashboard_routes_1 = __importDefault(require("./routes/dashboard.routes"))
 const cliente_routes_1 = __importDefault(require("./routes/cliente.routes"));
 const usuario_routes_1 = __importDefault(require("./routes/usuario.routes"));
 const inventario_routes_1 = __importDefault(require("./routes/inventario.routes"));
-const product_routes_1 = __importDefault(require("./routes/product.routes"));
+const item_routes_1 = __importDefault(require("./routes/item.routes"));
 const payment_routes_1 = __importDefault(require("./routes/payment.routes"));
 const purchase_routes_1 = __importDefault(require("./routes/purchase.routes"));
 const invoice_routes_1 = __importDefault(require("./routes/invoice.routes"));
-const warehouse_routes_1 = __importDefault(require("./routes/warehouse.routes"));
+const location_routes_1 = __importDefault(require("./routes/location.routes"));
 const hr_routes_1 = __importDefault(require("./routes/hr.routes"));
 const config_routes_1 = __importDefault(require("./routes/config.routes"));
 const treasury_routes_1 = __importDefault(require("./routes/treasury.routes"));
 const admin_routes_1 = __importDefault(require("./routes/admin.routes"));
+const manufacturing_routes_1 = __importDefault(require("./routes/manufacturing.routes"));
+const sales_order_routes_1 = __importDefault(require("./routes/sales-order.routes"));
+const logistics_routes_1 = __importDefault(require("./routes/logistics.routes"));
+const tenant_routes_1 = __importDefault(require("./routes/tenant.routes"));
+const landlord_routes_1 = __importDefault(require("./routes/landlord.routes"));
+const billing_routes_1 = __importDefault(require("./routes/billing.routes"));
+const subscription_routes_1 = __importDefault(require("./routes/subscription.routes"));
+const ticket_routes_1 = __importDefault(require("./routes/ticket.routes"));
+const analytics_routes_1 = __importDefault(require("./routes/analytics.routes"));
+const truck_routes_1 = __importDefault(require("./routes/truck.routes"));
+const tenant_middleware_1 = require("./middleware/tenant.middleware");
+const swagger_1 = require("./docs/swagger");
+const webhook_routes_1 = __importDefault(require("./routes/webhook.routes"));
 const auth_routes_1 = __importDefault(require("./routes/auth.routes"));
 const auth_middleware_1 = require("./middleware/auth.middleware");
 const app = (0, express_1.default)();
@@ -47,10 +61,14 @@ const corsOptions = {
     credentials: true,
 };
 app.use((0, cors_1.default)(corsOptions));
+// =============================================================================
+// WEBHOOKS (DEBEN IR ANTES DE EXPRESS.JSON PARA MANTENER EL RAW BODY)
+// =============================================================================
+app.use('/api/webhooks', express_1.default.raw({ type: 'application/json' }), webhook_routes_1.default);
 app.use(express_1.default.json({ limit: '1mb' }));
 app.use(express_1.default.urlencoded({ extended: true }));
 // =============================================================================
-// MIDDLEWARE: EXTRACTOR DE IDEMPOTENCY-KEY
+// MIDDLEWARE: EXTRACTOR DE IDEMPOTENCY-KEY Y TENANT
 // =============================================================================
 const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 app.use((req, _res, next) => {
@@ -65,6 +83,7 @@ app.use((req, _res, next) => {
     }
     next();
 });
+app.use(tenant_middleware_1.tenantMiddleware);
 // =============================================================================
 // HEALTH CHECK
 // =============================================================================
@@ -90,19 +109,40 @@ app.use('/api/dashboard', auth_middleware_1.authenticateToken, dashboard_routes_
 app.use('/api/customers', auth_middleware_1.authenticateToken, cliente_routes_1.default);
 app.use('/api/users', auth_middleware_1.authenticateToken, usuario_routes_1.default);
 app.use('/api/inventory', auth_middleware_1.authenticateToken, inventario_routes_1.default);
-app.use('/api/products', auth_middleware_1.authenticateToken, product_routes_1.default);
+app.use('/api/products', auth_middleware_1.authenticateToken, item_routes_1.default);
 app.use('/api/payments', auth_middleware_1.authenticateToken, payment_routes_1.default);
 app.use('/api/purchases', auth_middleware_1.authenticateToken, purchase_routes_1.default);
 app.use('/api/invoices', auth_middleware_1.authenticateToken, invoice_routes_1.default);
-app.use('/api/warehouses', auth_middleware_1.authenticateToken, warehouse_routes_1.default);
+app.use('/api/locations', auth_middleware_1.authenticateToken, location_routes_1.default);
 app.use('/api/hr', auth_middleware_1.authenticateToken, hr_routes_1.default);
+app.use('/api/subscription', auth_middleware_1.authenticateToken, subscription_routes_1.default);
+app.use('/api/tickets', auth_middleware_1.authenticateToken, ticket_routes_1.default);
 app.use('/api/config', auth_middleware_1.authenticateToken, config_routes_1.default);
 app.use('/api/treasury', auth_middleware_1.authenticateToken, treasury_routes_1.default);
 app.use('/api/admin', auth_middleware_1.authenticateToken, admin_routes_1.default);
+app.use('/api/manufacturing', auth_middleware_1.authenticateToken, manufacturing_routes_1.default);
+app.use('/api/sales-orders', auth_middleware_1.authenticateToken, sales_order_routes_1.default);
+app.use('/api/logistics', auth_middleware_1.authenticateToken, logistics_routes_1.default);
+app.use('/api/tenants', auth_middleware_1.authenticateToken, tenant_routes_1.default);
+app.use('/api/landlord', auth_middleware_1.authenticateToken, landlord_routes_1.default);
+app.use('/api/billing', billing_routes_1.default); // Público por webhook
+app.use('/api/analytics', auth_middleware_1.authenticateToken, analytics_routes_1.default);
+app.use('/api/trucks', auth_middleware_1.authenticateToken, truck_routes_1.default);
+// Servir siempre el frontend compilado (ignorar NODE_ENV para evitar 404s en Railway)
+app.use(express_1.default.static(path_1.default.join(__dirname, '../frontend/dist')));
+// Cualquier ruta que no sea de la API, servirá el index.html del frontend
+app.get('*', (req, res, next) => {
+    if (!req.path.startsWith('/api/')) {
+        res.sendFile(path_1.default.join(__dirname, '../frontend/dist/index.html'));
+    }
+    else {
+        next();
+    }
+});
 // =============================================================================
-// 404 CATCH-ALL
+// 404 CATCH-ALL PARA LA API
 // =============================================================================
-app.use((_req, res) => {
+app.use('/api/*', (_req, res) => {
     res.status(404).json({
         success: false,
         code: 'NOT_FOUND',
@@ -114,4 +154,5 @@ app.use((_req, res) => {
 // =============================================================================
 app.use(errorHandler_1.errorHandler);
 exports.default = app;
+(0, swagger_1.setupSwagger)(app);
 //# sourceMappingURL=app.js.map

@@ -32,6 +32,7 @@ import billingRoutes from './routes/billing.routes';
 import subscriptionRoutes from './routes/subscription.routes';
 import ticketRoutes from './routes/ticket.routes';
 import analyticsRoutes from './routes/analytics.routes';
+import truckRoutes from './routes/truck.routes';
 import { tenantMiddleware } from './middleware/tenant.middleware';
 import { setupSwagger } from './docs/swagger';
 import webhookRoutes from './routes/webhook.routes';
@@ -137,6 +138,7 @@ app.use('/api/tenants', authenticateToken, tenantRoutes);
 app.use('/api/landlord', authenticateToken, landlordRoutes);
 app.use('/api/billing', billingRoutes); // Público por webhook
 app.use('/api/analytics', authenticateToken, analyticsRoutes);
+app.use('/api/trucks', authenticateToken, truckRoutes);
 
 // Servir siempre el frontend compilado (ignorar NODE_ENV para evitar 404s en Railway)
   app.use(express.static(path.join(__dirname, '../frontend/dist')));

@@ -11,6 +11,6 @@ router.get('/camiones', inventario_controller_1.getCamiones);
 router.get('/camiones/:id/liquidacion', inventario_controller_1.getLiquidacion);
 router.post('/traspaso', inventario_controller_1.registrarTraspaso);
 router.get('/kardex', inventario_controller_1.getAllKardex);
-router.get('/kardex/:productId', inventario_controller_1.getKardex);
+router.get('/kardex/:itemId', inventario_controller_1.getKardex);
 exports.default = router;
 //# sourceMappingURL=inventario.routes.js.map
