@@ -145,13 +145,14 @@ export class TruckController {
   static async dispatchTrip(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const tenantId = tenantContext.getStore() || (req as any).user?.tenantId;
-      const { tripId, cargoDescription, originAddress, destinationAddress, truckId, driverId, clientId } = req.body;
+      const { tripId, cargoDescription, originAddress, destinationAddress, truckId, driverId, clientId, departureDateTime } = req.body;
 
       const result = await prisma.$transaction(async (tx) => {
         const trip = await tx.trip.create({
           data: {
             tripId, cargoDescription, originAddress, destinationAddress,
-            truckId, driverId, clientId, tenantId
+            truckId, driverId, clientId, tenantId,
+            departureDateTime: departureDateTime ? new Date(departureDateTime) : new Date()
           }
         });
 
@@ -178,11 +179,12 @@ export class TruckController {
     try {
       const tenantId = tenantContext.getStore() || (req as any).user?.tenantId;
       const { id } = req.params;
+      const { arrivalDateTime } = req.body;
 
       const result = await prisma.$transaction(async (tx) => {
         const trip = await tx.trip.update({
           where: { id, tenantId },
-          data: { arrivalDateTime: new Date() }
+          data: { arrivalDateTime: arrivalDateTime ? new Date(arrivalDateTime) : new Date() }
         });
 
         // Free up the truck
