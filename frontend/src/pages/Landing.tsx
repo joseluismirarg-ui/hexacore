@@ -21,8 +21,8 @@ export function Landing() {
       if (data.session) {
         navigate('/dashboard');
       }
-    } catch (err) {
-      alert('Error iniciando sesión Demo. Contacte a soporte.');
+    } catch (err: any) {
+      alert(`Error iniciando sesión Demo: ${err.message || 'Desconocido'}`);
     } finally {
       setIsDemoLoading(false);
     }
