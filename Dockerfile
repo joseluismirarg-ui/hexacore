@@ -69,4 +69,4 @@ COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 # Exponer el puerto
 EXPOSE 3000
 
-CMD npx prisma db push --force-reset --accept-data-loss && node dist/server.js
+CMD npx prisma db push --accept-data-loss && node dist/server.js
