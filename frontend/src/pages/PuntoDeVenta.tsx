@@ -71,6 +71,46 @@ export function PuntoDeVenta() {
   const [discountValue, setDiscountValue] = useState<string>('');
   const [discountError, setDiscountError] = useState<string | null>(null);
 
+  // Estados de Modales de Creación
+  const [showSellerModal, setShowSellerModal] = useState(false);
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [sellerForm, setSellerForm] = useState({ name: '', email: '', password: '', role: 'VENDEDOR' });
+  const [customerForm, setCustomerForm] = useState({ companyName: '', rfc: '', email: '', phone: '', creditLimit: '0' });
+
+  const handleCreateSeller = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setSubmitting(true);
+      const res = await usuariosApi.crear(sellerForm) as any;
+      const newUser = res.data;
+      setUsers([...users, newUser]);
+      setSelectedUser(newUser);
+      setShowSellerModal(false);
+      setSellerForm({ name: '', email: '', password: '', role: 'VENDEDOR' });
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : 'Error al crear vendedor');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCreateCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setSubmitting(true);
+      const res = await clientesApi.crear(customerForm) as any;
+      const newCustomer = res.data;
+      setCustomers([...customers, newCustomer]);
+      setSelectedCustomer(newCustomer);
+      setShowCustomerModal(false);
+      setCustomerForm({ companyName: '', rfc: '', email: '', phone: '', creditLimit: '0' });
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : 'Error al crear cliente');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   // Aplicar descuento global al ticket con validación estricta
   const aplicarDescuentoGlobal = (): boolean => {
     setDiscountError(null);
@@ -331,7 +371,12 @@ export function PuntoDeVenta() {
           {/* Selectores */}
           <div className="card grid grid-cols-2 gap-4">
             <div>
-              <p className="mb-1.5 text-xs font-medium text-gray-400">Vendedor</p>
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-xs font-medium text-gray-400">Vendedor</p>
+                <button onClick={() => setShowSellerModal(true)} className="text-gray-400 hover:text-hc-cobalt-light" title="Crear Vendedor">
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
               <select
                 className="w-full rounded-lg border border-gray-700/50 bg-hc-surface-dark px-3 py-2 text-sm text-gray-200 focus:border-hc-cobalt focus:outline-none"
                 value={selectedUser?.id ?? ''}
@@ -343,7 +388,12 @@ export function PuntoDeVenta() {
               </select>
             </div>
             <div>
-              <p className="mb-1.5 text-xs font-medium text-gray-400">Cliente</p>
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-xs font-medium text-gray-400">Cliente</p>
+                <button onClick={() => setShowCustomerModal(true)} className="text-gray-400 hover:text-hc-cobalt-light" title="Crear Cliente">
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
               <select
                 className="w-full rounded-lg border border-gray-700/50 bg-hc-surface-dark px-3 py-2 text-sm text-gray-200 focus:border-hc-cobalt focus:outline-none"
                 value={selectedCustomer?.id ?? ''}
@@ -648,6 +698,113 @@ export function PuntoDeVenta() {
                 Confirmar venta
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Crear Vendedor ──────────────────────────────────── */}
+      {showSellerModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-hc-surface p-6 rounded-lg shadow-lg w-full max-w-md border border-gray-700/50">
+            <h2 className="text-xl font-bold mb-4 text-gray-100">Crear Vendedor</h2>
+            <form onSubmit={handleCreateSeller} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-200">Nombre Completo</label>
+                <input
+                  type="text"
+                  required
+                  className="input-field"
+                  value={sellerForm.name}
+                  onChange={e => setSellerForm({ ...sellerForm, name: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-200">Correo Electrónico</label>
+                <input
+                  type="email"
+                  required
+                  className="input-field"
+                  value={sellerForm.email}
+                  onChange={e => setSellerForm({ ...sellerForm, email: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-200">Contraseña Inicial</label>
+                <input
+                  type="password"
+                  required
+                  className="input-field"
+                  value={sellerForm.password}
+                  onChange={e => setSellerForm({ ...sellerForm, password: e.target.value })}
+                />
+              </div>
+              <div className="flex justify-end gap-2 mt-6">
+                <Button variant="ghost" type="button" onClick={() => setShowSellerModal(false)}>
+                  Cancelar
+                </Button>
+                <Button variant="primary" type="submit" loading={submitting}>
+                  Crear Vendedor
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Crear Cliente ──────────────────────────────────── */}
+      {showCustomerModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-hc-surface p-6 rounded-lg shadow-lg w-full max-w-md border border-gray-700/50">
+            <h2 className="text-xl font-bold mb-4 text-gray-100">Crear Cliente</h2>
+            <form onSubmit={handleCreateCustomer} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-200">Empresa / Nombre Comercial</label>
+                <input
+                  type="text"
+                  required
+                  className="input-field"
+                  value={customerForm.companyName}
+                  onChange={e => setCustomerForm({ ...customerForm, companyName: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-200">RFC (Opcional)</label>
+                <input
+                  type="text"
+                  className="input-field"
+                  value={customerForm.rfc}
+                  onChange={e => setCustomerForm({ ...customerForm, rfc: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-200">Correo (Opcional)</label>
+                  <input
+                    type="email"
+                    className="input-field"
+                    value={customerForm.email}
+                    onChange={e => setCustomerForm({ ...customerForm, email: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-200">Teléfono (Opcional)</label>
+                  <input
+                    type="tel"
+                    className="input-field"
+                    value={customerForm.phone}
+                    onChange={e => setCustomerForm({ ...customerForm, phone: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 mt-6">
+                <Button variant="ghost" type="button" onClick={() => setShowCustomerModal(false)}>
+                  Cancelar
+                </Button>
+                <Button variant="primary" type="submit" loading={submitting}>
+                  Crear Cliente
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}

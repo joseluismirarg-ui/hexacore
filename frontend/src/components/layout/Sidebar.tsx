@@ -73,6 +73,7 @@ export function Sidebar() {
       allowedRoles: ['ADMIN', 'VENDEDOR', 'RH'],
       items: [
         { to: '/hr', label: 'Recursos Humanos', icon: UserCheck, roles: ['ADMIN', 'RH', 'VENDEDOR'] },
+        { to: '/vendedores', label: 'Directorio Vendedores', icon: Users, roles: ['ADMIN', 'RH'] },
         { to: '/clientes', label: 'Directorio Clientes', icon: Users, roles: ['ADMIN', 'VENDEDOR'] },
         { to: '/proveedores', label: 'Directorio Proveedores', icon: Users, roles: ['ADMIN'] },
       ],

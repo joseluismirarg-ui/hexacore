@@ -10,6 +10,7 @@ import { RutasConsignacion } from '@/pages/RutasConsignacion';
 import { Liquidacion } from '@/pages/Liquidacion';
 import { CatalogoProductos } from '@/pages/CatalogoProductos';
 import { DirectorioClientes } from '@/pages/DirectorioClientes';
+import { DirectorioVendedores } from '@/pages/DirectorioVendedores';
 import { PuntoDeVenta } from '@/pages/PuntoDeVenta';
 import { LogisticaKardex } from '@/pages/LogisticaKardex';
 import { CuentasPorCobrar } from '@/pages/CuentasPorCobrar';
@@ -76,6 +77,7 @@ export default function App() {
             {/* ── RRHH & CRM ─────────────────── */}
             <Route path="/clientes" element={<DirectorioClientes />} />
             <Route path="/clientes/precios" element={<ListasDePrecios />} />
+            <Route path="/vendedores" element={<DirectorioVendedores />} />
             <Route path="/proveedores" element={<DirectorioProveedores />} />
             <Route path="/hr" element={<RecursosHumanos />} />
 
