@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Hexagon, CheckCircle2, PlayCircle, Shield, Zap, Database } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/context/AuthContext';
-import { authApi } from '@/lib/api';
+import { authApi, BASE_URL } from '@/lib/api';
 
 export function Landing() {
   const navigate = useNavigate();
@@ -13,7 +13,7 @@ export function Landing() {
   const handleDemo = async () => {
     setIsDemoLoading(true);
     try {
-      const res = await fetch('http://localhost:3000/api/auth/demo', { method: 'POST' });
+      const res = await fetch(`${BASE_URL}/api/auth/demo`, { method: 'POST' });
       const data = await res.json();
       if (res.ok && data.token) {
         login(data.token, data.user);

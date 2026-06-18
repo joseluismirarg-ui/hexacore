@@ -19,7 +19,7 @@ export class ApiError extends Error {
   }
 }
 
-const BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:3000';
+export const BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:3000';
 
 async function request<T>(
   method: string,

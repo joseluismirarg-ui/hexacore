@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Hexagon, Lock, Mail, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { authApi, ApiError } from '@/lib/api';
+import { authApi, ApiError, BASE_URL } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 
 export function Login() {
@@ -41,7 +41,7 @@ export function Login() {
     setIsDemoLoading(true);
     setError(null);
     try {
-      const res = await fetch('http://localhost:3000/api/auth/demo', {
+      const res = await fetch(`${BASE_URL}/api/auth/demo`, {
         method: 'POST'
       });
       const data = await res.json();
