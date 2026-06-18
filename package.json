@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
-    "start": "npx prisma db push --force-reset --accept-data-loss && node dist/server.js",
+    "start": "node dist/server.js",
     "infra:up": "docker-compose up -d",
     "infra:down": "docker-compose down",
     "db:generate": "prisma generate",
