@@ -59,7 +59,7 @@ export const seedIndustryTemplates = async (prisma: PrismaClient, tenantId: stri
   const location = await prisma.location.create({
     data: {
       name: 'Bodega Principal',
-      code: 'MAIN-BOD',
+      code: `MAIN-BOD-${tenantId.slice(-6)}`,
       tenantId
     }
   });
@@ -79,7 +79,7 @@ export const seedIndustryTemplates = async (prisma: PrismaClient, tenantId: stri
         const createdItem = await prisma.item.create({
           data: {
             name: item.name,
-            sku: item.sku,
+            sku: `${item.sku}-${tenantId.slice(-6)}`,
             cost: item.price * 0.5,
             categoryId: category.id,
             price: item.price,
