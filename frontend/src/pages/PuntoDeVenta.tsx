@@ -306,18 +306,27 @@ export function PuntoDeVenta() {
     try {
       // PRECISIÓN FINANCIERA: precioAplicado desde fuente original (DB)
       // EL TOTAL NO SE ENVÍA: Backend recalcula soberanamente para evitar manipulación
-      const items = cart.map((i) => ({
-        productId: i.product.id,
-        cantidad: i.cantidad,
-        precioAplicado: i.product.price.toString().trim(),
-        descuentoPorcentaje: i.descuentoPorcentaje ?? 0,
-        descuentoMonto: i.descuentoMonto ?? '0.00',
-      }));
+      const items = cart.map((i) => {
+        const precioOriginal = Number(i.product.price);
+        let precioFinal = precioOriginal;
+        if (i.descuentoPorcentaje > 0) {
+          precioFinal = precioOriginal * (1 - i.descuentoPorcentaje / 100);
+        } else if (i.descuentoMonto && i.descuentoMonto !== '0.00') {
+          precioFinal = precioOriginal - Number(i.descuentoMonto);
+        }
+        
+        return {
+          itemId: i.product.id,
+          cantidad: i.cantidad,
+          precioAplicado: Number(precioFinal.toFixed(4)),
+        };
+      });
 
       await transaccionesApi.registrar({
         tipo: paymentType,
         customerId: selectedCustomer.id,
         userId: selectedUser.id,
+        total: totalDisplayNumber,
         items,
       });
 
