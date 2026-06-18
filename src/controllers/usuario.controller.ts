@@ -2,10 +2,11 @@ import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma';
 import bcrypt from 'bcrypt';
 
-export const getVendedores = async (_req: Request, res: Response, next: NextFunction) => {
+export const getVendedores = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const tenantId = (req as any).tenant?.id;
     const vendedores = await prisma.user.findMany({
-      where: { role: 'VENDEDOR' },
+      where: tenantId ? { role: 'VENDEDOR', tenantId } : { role: 'VENDEDOR' },
       select: {
         id: true,
         email: true,
@@ -20,9 +21,11 @@ export const getVendedores = async (_req: Request, res: Response, next: NextFunc
   }
 };
 
-export const getAllUsers = async (_req: Request, res: Response, next: NextFunction) => {
+export const getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const tenantId = (req as any).tenant?.id;
     const users = await prisma.user.findMany({
+      where: tenantId ? { tenantId } : undefined,
       select: {
         id: true,
         email: true,
@@ -41,10 +44,11 @@ export const getAllUsers = async (_req: Request, res: Response, next: NextFuncti
 export const createUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, password, name, role } = req.body;
+    const tenantId = (req as any).tenant?.id;
     const passwordHash = await bcrypt.hash(password, 10);
 
     const user = await prisma.user.create({
-      data: { email, passwordHash, name, role },
+      data: { email, passwordHash, name, role, tenantId },
       select: { id: true, email: true, name: true, role: true, isActive: true }
     });
     
