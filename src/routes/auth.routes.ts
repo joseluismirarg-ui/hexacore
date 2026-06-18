@@ -6,7 +6,7 @@ import bcrypt from 'bcrypt';
 const router = Router();
 
 // GET /api/auth/seed-test-pro — TEMPORARY ROUTE to create a pro test account
-router.get('/seed-test-pro', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.get('/seed-test-pro', async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const tenant = await prisma.tenant.create({
       data: {
