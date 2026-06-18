@@ -95,7 +95,7 @@ export function Sidebar() {
       label: 'Administración',
       allowedRoles: ['ADMIN'],
       items: [
-        { to: '/superadmin', label: 'Panel Super Admin', icon: Shield, roles: ['ADMIN'] },
+        { to: '/superadmin', label: 'Panel Super Admin', icon: Shield, roles: ['ADMIN'], tenantIds: ['default-tenant'] },
       ],
     },
   ];
@@ -114,9 +114,11 @@ export function Sidebar() {
           .map((group) => {
             const groupItems = group.items.filter(item => {
               const itemRoles = (item as any).roles;
+              const itemTenants = (item as any).tenantIds;
               const roleAllowed = !itemRoles || (user && itemRoles.includes(user.role));
+              const tenantAllowed = !itemTenants || (user && itemTenants.includes(user.tenantId));
               const licenseAllowed = !(item as any).moduleKey || license[(item as any).moduleKey] === true || Object.keys(license).length === 0;
-              return roleAllowed && licenseAllowed;
+              return roleAllowed && tenantAllowed && licenseAllowed;
             });
 
             if (groupItems.length === 0) return null;

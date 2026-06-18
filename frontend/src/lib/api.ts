@@ -21,6 +21,8 @@ export class ApiError extends Error {
 
 export const BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:3000';
 
+import { supabase } from './supabase';
+
 async function request<T>(
   method: string,
   path: string,
@@ -32,7 +34,9 @@ async function request<T>(
     ...customHeaders,
   };
 
-  const token = localStorage.getItem('hexa_token');
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }

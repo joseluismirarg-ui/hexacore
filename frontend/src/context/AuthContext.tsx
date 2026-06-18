@@ -1,18 +1,20 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { api } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
+import type { Session } from '@supabase/supabase-js';
 
 export interface User {
   id: string;
   name: string;
   email: string;
   role: string;
+  tenantId: string;
 }
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (token: string, user: User) => void;
-  logout: () => void;
+  session: Session | null;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
   isLoading: boolean;
 }
@@ -20,56 +22,62 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Restaurar sesión
-    const storedToken = localStorage.getItem('hexa_token');
-    const storedUser = localStorage.getItem('hexa_user');
-
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        // Fallback
-        setUser(null);
-        setToken(null);
-        localStorage.removeItem('hexa_token');
-        localStorage.removeItem('hexa_user');
+    // 1. Obtener la sesión actual al cargar
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session?.user) {
+        setUser({
+          id: session.user.id,
+          email: session.user.email || '',
+          name: session.user.user_metadata?.name || 'Usuario',
+          role: session.user.user_metadata?.role || 'USER',
+          tenantId: session.user.user_metadata?.tenantId || 'default-tenant'
+        });
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    });
+
+    // 2. Escuchar cambios en la autenticación (login, logout, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session?.user) {
+        setUser({
+          id: session.user.id,
+          email: session.user.email || '',
+          name: session.user.user_metadata?.name || 'Usuario',
+          role: session.user.user_metadata?.role || 'USER',
+          tenantId: session.user.user_metadata?.tenantId || 'default-tenant'
+        });
+      } else {
+        setUser(null);
+      }
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = (newToken: string, newUser: User) => {
-    setToken(newToken);
-    setUser(newUser);
-    localStorage.setItem('hexa_token', newToken);
-    localStorage.setItem('hexa_user', JSON.stringify(newUser));
-  };
-
-  const logout = () => {
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem('hexa_token');
-    localStorage.removeItem('hexa_user');
+  const logout = async () => {
+    await supabase.auth.signOut();
   };
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        token,
-        login,
+        token: session?.access_token || null,
+        session,
         logout,
-        isAuthenticated: !!token,
+        isAuthenticated: !!session,
         isLoading,
       }}
     >
-      {children}
+      {!isLoading && children}
     </AuthContext.Provider>
   );
 }

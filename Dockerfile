@@ -15,6 +15,12 @@ COPY frontend/ ./
 RUN npm install -g typescript
 RUN chmod +x node_modules/.bin/tsc || true
 RUN chmod +x node_modules/.bin/vite || true
+
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
+ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
+
 RUN npm run build
 
 # ------------------------------------------------------------------------------

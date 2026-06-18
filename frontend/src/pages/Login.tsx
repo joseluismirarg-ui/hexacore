@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Hexagon, Lock, Mail, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { authApi, ApiError, BASE_URL } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
 
 export function Login() {
@@ -11,7 +11,6 @@ export function Login() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isDemoLoading, setIsDemoLoading] = useState(false);
-  const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -25,13 +24,18 @@ export function Login() {
     setError(null);
 
     try {
-      const res = await authApi.login({ email, password }) as any;
-      if (res.success && res.data) {
-        login(res.data.token, res.data.user);
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError) throw authError;
+
+      if (data.session) {
         navigate(from, { replace: true });
       }
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Error de conexión');
+    } catch (err: any) {
+      setError(err.message || 'Error de conexión');
     } finally {
       setIsLoading(false);
     }
@@ -41,18 +45,19 @@ export function Login() {
     setIsDemoLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${BASE_URL}/api/auth/demo`, {
-        method: 'POST'
+      // Autenticación automática como usuario Demo Ficticio
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email: 'demo@hexacore.com',
+        password: 'DemoHexa2026',
       });
-      const data = await res.json();
-      if (res.ok && data.token) {
-        login(data.token, data.user);
+
+      if (authError) throw authError;
+
+      if (data.session) {
         navigate(from, { replace: true });
-      } else {
-        throw new Error(data.error || 'Error creando demo');
       }
     } catch (err: any) {
-      setError(err.message || 'Error de conexión a la Demo');
+      setError(err.message || 'Error iniciando sesión Demo. Contacte a soporte.');
     } finally {
       setIsDemoLoading(false);
     }
