@@ -138,16 +138,13 @@ app.use('/api/landlord', authenticateToken, landlordRoutes);
 app.use('/api/billing', billingRoutes); // Público por webhook
 app.use('/api/analytics', authenticateToken, analyticsRoutes);
 
-// =============================================================================
-// SERVE STATIC FRONTEND IN PRODUCTION
-// =============================================================================
 // Servir siempre el frontend compilado (ignorar NODE_ENV para evitar 404s en Railway)
-  app.use(express.static(path.join(__dirname, '../../frontend/dist')));
+  app.use(express.static(path.join(__dirname, '../frontend/dist')));
   
   // Cualquier ruta que no sea de la API, servirá el index.html del frontend
   app.get('*', (req: Request, res: Response, next: NextFunction) => {
     if (!req.path.startsWith('/api/')) {
-      res.sendFile(path.join(__dirname, '../../frontend/dist/index.html'));
+      res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
     } else {
       next();
     }
