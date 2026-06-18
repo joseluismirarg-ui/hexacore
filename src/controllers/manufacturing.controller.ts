@@ -67,7 +67,7 @@ export class ManufacturingController {
     } catch (error) { next(error); }
   }
 
-  static async processProductionOrder(req: Request, res: Response, next: NextFunction): Promise<void> {
+  static async processProductionOrder(req: Request, res: Response): Promise<void> {
     try {
       const tenantId = tenantContext.getStore() || (req as any).user?.tenantId;
       const userId = (req as any).user?.id || 'system';
