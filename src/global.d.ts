@@ -19,6 +19,7 @@ declare namespace Express {
     user?: {
       id: string;
       role: string;
+      tenantId?: string;
     };
   }
 }
