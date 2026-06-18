@@ -1,10 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://dummy.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'dummy-key';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('⚠️ Faltan variables de entorno de Supabase: VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY. La autenticación fallará.');
+if (supabaseUrl === 'https://dummy.supabase.co') {
+  console.error('⚠️ CRITICAL: Faltan variables de entorno VITE_SUPABASE_URL. La app no funcionará.');
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
