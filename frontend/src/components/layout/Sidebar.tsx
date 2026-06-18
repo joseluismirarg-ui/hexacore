@@ -45,9 +45,9 @@ export function Sidebar() {
       allowedRoles: ['ADMIN', 'VENDEDOR'],
       items: [
         { to: '/pos', label: 'Punto de Venta', icon: ShoppingCart },
-        { to: '/consignaciones', label: 'Consignaciones', icon: PackageSearch },
-        { to: '/liquidacion', label: 'Liquidación', icon: Calculator },
-        { to: '/facturacion', label: 'Facturación CFDI', icon: FileText },
+        { to: '/consignaciones', label: 'Consignaciones', icon: PackageSearch, roles: ['ADMIN'] },
+        { to: '/liquidacion', label: 'Liquidación', icon: Calculator, roles: ['ADMIN'] },
+        { to: '/facturacion', label: 'Facturación CFDI', icon: FileText, roles: ['ADMIN'] },
       ],
     },
     {
@@ -61,18 +61,18 @@ export function Sidebar() {
     },
     {
       label: 'Inventario',
-      allowedRoles: ['ADMIN', 'ALMACENISTA'],
+      allowedRoles: ['ADMIN', 'ALMACENISTA', 'VENDEDOR'],
       items: [
-        { to: '/almacenes', label: 'Gestión Almacenes', icon: Warehouse },
-        { to: '/kardex', label: 'Logística Kardex', icon: ArrowLeftRight },
-        { to: '/productos', label: 'Catálogo Productos', icon: PackageSearch },
+        { to: '/almacenes', label: 'Gestión Almacenes', icon: Warehouse, roles: ['ADMIN', 'ALMACENISTA'] },
+        { to: '/kardex', label: 'Logística Kardex', icon: ArrowLeftRight, roles: ['ADMIN', 'ALMACENISTA', 'VENDEDOR'] },
+        { to: '/productos', label: 'Catálogo Productos', icon: PackageSearch, roles: ['ADMIN', 'ALMACENISTA', 'VENDEDOR'] },
       ],
     },
     {
       label: 'RH & CRM',
       allowedRoles: ['ADMIN', 'VENDEDOR', 'RH'],
       items: [
-        { to: '/hr', label: 'Recursos Humanos', icon: UserCheck, roles: ['ADMIN', 'RH', 'VENDEDOR'] },
+        { to: '/hr', label: 'Recursos Humanos', icon: UserCheck, roles: ['ADMIN', 'RH'] },
         { to: '/vendedores', label: 'Directorio Vendedores', icon: Users, roles: ['ADMIN', 'RH'] },
         { to: '/clientes', label: 'Directorio Clientes', icon: Users, roles: ['ADMIN', 'VENDEDOR'] },
         { to: '/proveedores', label: 'Directorio Proveedores', icon: Users, roles: ['ADMIN'] },

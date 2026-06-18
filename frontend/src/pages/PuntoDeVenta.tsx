@@ -226,7 +226,7 @@ export function PuntoDeVenta() {
       if (existing) {
         return prev.map((i) =>
           i.product.id === product.id
-            ? { ...i, cantidad: Math.min(i.cantidad + 1, product.globalStock) }
+            ? { ...i, cantidad: i.cantidad + 1 }
             : i
         );
       }
@@ -430,8 +430,7 @@ export function PuntoDeVenta() {
                   <button
                     key={p?.id}
                     onClick={() => addToCart(p)}
-                    disabled={p?.globalStock === 0}
-                    className="flex w-full items-center gap-4 px-4 py-3 text-left transition-colors hover:bg-hc-surface-dark/50 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex w-full items-center gap-4 px-4 py-3 text-left transition-colors hover:bg-hc-surface-dark/50"
                   >
                     <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-hc-cobalt/10">
                       <Package className="h-4 w-4 text-hc-cobalt-light" />
