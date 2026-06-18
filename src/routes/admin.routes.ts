@@ -5,8 +5,43 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma';
+import bcrypt from 'bcrypt';
 
 const router = Router();
+
+// GET /api/admin/seed-test-pro — TEMPORARY ROUTE to create a pro test account
+router.get('/seed-test-pro', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const tenant = await prisma.tenant.create({
+      data: {
+        name: 'Hexa Core Pro Test',
+        industry: 'GENERAL'
+      }
+    });
+
+    const passwordHash = await bcrypt.hash('prueba1', 10);
+    
+    const user = await prisma.user.upsert({
+      where: { email: 'prueba1@prueba1.com' },
+      update: {
+        passwordHash,
+        tenantId: tenant.id,
+        role: 'ADMIN'
+      },
+      create: {
+        name: 'Administrador Pro',
+        email: 'prueba1@prueba1.com',
+        passwordHash,
+        role: 'ADMIN',
+        tenantId: tenant.id
+      }
+    });
+
+    res.json({ success: true, message: 'Cuenta PRO creada', email: user.email, password: 'prueba1' });
+  } catch (error) {
+    next(error);
+  }
+});
 
 // GET /api/admin/licenses — Obtener la configuración de licencias
 router.get('/licenses', async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
