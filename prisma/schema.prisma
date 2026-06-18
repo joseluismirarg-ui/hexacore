@@ -138,12 +138,11 @@ model Tenant {
 // =============================================================================
 
 model User {
-  id           String  @id @default(cuid())
-  email        String  @unique
-  passwordHash String  @map("password_hash")
-  name         String
-  role         Role
-  isActive     Boolean @default(true) @map("is_active")
+  id       String  @id
+  email    String  @unique
+  name     String
+  role     Role
+  isActive Boolean @default(true) @map("is_active")
 
   tenantId String @default("default-tenant") @map("tenant_id")
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
