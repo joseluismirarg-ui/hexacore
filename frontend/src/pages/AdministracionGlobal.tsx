@@ -154,7 +154,7 @@ export default function AdministracionGlobal() {
 
           {showUserModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-              <div className="bg-background p-6 rounded-lg shadow-lg w-full max-w-md border border-border">
+              <div className="bg-hc-surface p-6 rounded-lg shadow-lg w-full max-w-md border border-gray-700/50">
                 <h2 className="text-xl font-bold mb-4">Crear Usuario</h2>
                 <form onSubmit={handleCreateUser} className="space-y-4">
                   <div>
@@ -162,7 +162,7 @@ export default function AdministracionGlobal() {
                     <input
                       type="text"
                       required
-                      className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      className="input-field"
                       value={userForm.name}
                       onChange={e => setUserForm({ ...userForm, name: e.target.value })}
                     />
@@ -172,7 +172,7 @@ export default function AdministracionGlobal() {
                     <input
                       type="email"
                       required
-                      className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      className="input-field"
                       value={userForm.email}
                       onChange={e => setUserForm({ ...userForm, email: e.target.value })}
                     />
@@ -182,7 +182,7 @@ export default function AdministracionGlobal() {
                     <input
                       type="password"
                       required
-                      className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      className="input-field"
                       value={userForm.password}
                       onChange={e => setUserForm({ ...userForm, password: e.target.value })}
                     />
@@ -190,7 +190,7 @@ export default function AdministracionGlobal() {
                   <div>
                     <label className="block text-sm font-medium mb-1">Rol en el Sistema</label>
                     <select
-                      className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      className="input-field"
                       value={userForm.role}
                       onChange={e => setUserForm({ ...userForm, role: e.target.value })}
                     >
