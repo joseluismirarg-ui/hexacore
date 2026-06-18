@@ -1,5 +1,11 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 import { tenantContext } from "../middleware/tenant.middleware";
+
+const tenantModels = new Set(
+  Prisma.dmmf.datamodel.models
+    .filter(m => m.fields.some(f => f.name === 'tenantId'))
+    .map(m => m.name)
+);
 
 const globalForPrisma = globalThis as unknown as {
   prisma: ReturnType<typeof createPrismaClient> | undefined;
@@ -23,8 +29,8 @@ function createPrismaClient() {
           const tenantId = tenantContext.getStore();
 
           if (tenantId) {
-            // Exclude models that are global (like Tenant itself)
-            if (model !== 'Tenant') {
+            // Exclude models that don't have tenantId in their schema
+            if (tenantModels.has(model as string)) {
               if (operation === 'findUnique' || operation === 'findFirst' || operation === 'findMany' || operation === 'update' || operation === 'updateMany' || operation === 'delete' || operation === 'deleteMany') {
                 args.where = { ...args.where, tenantId };
               } else if (operation === 'create') {
