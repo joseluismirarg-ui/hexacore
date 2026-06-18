@@ -113,7 +113,7 @@ export default function SuperAdminPanel() {
                     <button 
                       onClick={async () => {
                         try {
-                          const res = await api.post(`/api/admin/impersonate/${t.id}`);
+                          const res = await api.post<{ token: string }>(`/api/admin/impersonate/${t.id}`, undefined);
                           if (res.data?.token) {
                             localStorage.setItem('hexa_token', res.data.token);
                             window.location.href = '/dashboard';

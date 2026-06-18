@@ -17,7 +17,7 @@ export default function Manufactura() {
   // Form states for Create BOM
   const [finalItemId, setFinalItemId] = useState('');
   const [productionCost, setProductionCost] = useState('');
-  const [components, setComponents] = useState<{ componentId: string; quantityRequired: number }[]>([{ componentId: '', quantityRequired: 1 }]);
+  const [components, setComponents] = useState<Array<{ componentId: string; quantityRequired: number }>>([{ componentId: '', quantityRequired: 1 }]);
   const [creating, setCreating] = useState(false);
 
   // Form states for Produce
@@ -32,9 +32,9 @@ export default function Manufactura() {
     setComponents(components.filter((_, i) => i !== index));
   };
 
-  const handleComponentChange = (index: number, field: string, value: any) => {
+  const handleComponentChange = (index: number, field: 'componentId' | 'quantityRequired', value: string | number) => {
     const newComponents = [...components];
-    newComponents[index] = { ...newComponents[index], [field]: value };
+    newComponents[index] = { ...newComponents[index], [field]: value } as { componentId: string; quantityRequired: number };
     setComponents(newComponents);
   };
 
@@ -46,7 +46,9 @@ export default function Manufactura() {
       await api.post('/api/manufacturing/bom', {
         itemId: finalItemId,
         productionCost: Number(productionCost) || 0,
-        components: components.filter(c => c.componentId && c.quantityRequired > 0)
+        components: components
+          .filter((c): c is { componentId: string; quantityRequired: number } => !!c.componentId && c.quantityRequired > 0)
+          .map(c => ({ componentId: c.componentId, quantityRequired: c.quantityRequired }))
       });
       setShowCreateModal(false);
       setFinalItemId('');
