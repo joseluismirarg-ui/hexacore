@@ -136,13 +136,16 @@ export async function registrarTransaccion(
       }
       locationId = dto.locationId;
     } else {
-      const almacenCentral = await prisma.inventoryLocation.findFirst({
+      let almacenCentral = await prisma.inventoryLocation.findFirst({
         where: { tipo: "CENTRAL" },
       });
       if (!almacenCentral) {
-        throw new InternalError(
-          "Almacén Central no configurado. Ejecuta el seed o crea una ubicación CENTRAL."
-        );
+        almacenCentral = await prisma.inventoryLocation.create({
+          data: {
+            name: "Almacén Central",
+            tipo: "CENTRAL",
+          }
+        });
       }
       locationId = almacenCentral.id;
     }

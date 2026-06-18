@@ -46,6 +46,63 @@ interface CartItem {
   descuentoMonto: string;      // Monto fijo en string, ej. "50.00"
 }
 
+function SearchableDropdown({ options, value, onChange, placeholder }: { options: {label: string, value: string}[], value: string, onChange: (val: string) => void, placeholder: string }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selected = options.find(o => o.value === value);
+
+  return (
+    <div ref={wrapperRef} className="relative w-full">
+      <div 
+        className="w-full rounded-lg border border-gray-700/50 bg-hc-surface-dark px-3 py-2 text-sm text-gray-200 cursor-pointer flex justify-between items-center"
+        onClick={() => setOpen(!open)}
+      >
+        <span className={selected ? '' : 'text-gray-500 truncate'}>{selected ? selected.label : placeholder}</span>
+      </div>
+      {open && (
+        <div className="absolute z-50 w-full mt-1 bg-hc-surface border border-gray-700/50 rounded-lg shadow-xl flex flex-col" style={{ maxHeight: '300px' }}>
+          <div className="p-2 border-b border-gray-700/50 shrink-0">
+            <input 
+              autoFocus
+              className="w-full bg-hc-surface-dark border border-gray-700/50 rounded px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-hc-cobalt"
+              placeholder="Buscar..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="overflow-y-auto">
+            {options.filter(o => o.label.toLowerCase().includes(search.toLowerCase())).map(o => (
+              <div 
+                key={o.value}
+                className="px-3 py-2 text-sm text-gray-200 hover:bg-hc-cobalt/10 cursor-pointer transition-colors truncate"
+                onClick={() => {
+                  onChange(o.value);
+                  setOpen(false);
+                  setSearch('');
+                }}
+              >
+                {o.label}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // PUNTO DE VENTA — Split Screen
 // ═════════════════════════════════════════════════════════════════════════════
@@ -386,15 +443,12 @@ export function PuntoDeVenta() {
                   <Plus className="h-4 w-4" />
                 </button>
               </div>
-              <select
-                className="w-full rounded-lg border border-gray-700/50 bg-hc-surface-dark px-3 py-2 text-sm text-gray-200 focus:border-hc-cobalt focus:outline-none"
+              <SearchableDropdown 
+                options={(users || []).map(u => ({ label: u.name, value: u.id }))}
                 value={selectedUser?.id ?? ''}
-                onChange={(e) => setSelectedUser(users.find((u) => u.id === e.target.value) ?? null)}
-              >
-                {(users || []).map((u) => (
-                  <option key={u?.id} value={u?.id}>{u?.name}</option>
-                ))}
-              </select>
+                onChange={(val) => setSelectedUser(users.find((u) => u.id === val) ?? null)}
+                placeholder="— Seleccionar vendedor —"
+              />
             </div>
             <div>
               <div className="flex items-center justify-between mb-1.5">
@@ -403,18 +457,12 @@ export function PuntoDeVenta() {
                   <Plus className="h-4 w-4" />
                 </button>
               </div>
-              <select
-                className="w-full rounded-lg border border-gray-700/50 bg-hc-surface-dark px-3 py-2 text-sm text-gray-200 focus:border-hc-cobalt focus:outline-none"
+              <SearchableDropdown 
+                options={(customers || []).map(c => ({ label: c.companyName, value: c.id }))}
                 value={selectedCustomer?.id ?? ''}
-                onChange={(e) =>
-                  setSelectedCustomer(customers.find((c) => c.id === e.target.value) ?? null)
-                }
-              >
-                <option value="">— Seleccionar cliente —</option>
-                {(customers || []).map((c) => (
-                  <option key={c?.id} value={c?.id}>{c?.companyName}</option>
-                ))}
-              </select>
+                onChange={(val) => setSelectedCustomer(customers.find((c) => c.id === val) ?? null)}
+                placeholder="— Seleccionar cliente —"
+              />
             </div>
           </div>
 
