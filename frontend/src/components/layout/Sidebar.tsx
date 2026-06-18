@@ -35,7 +35,7 @@ export function Sidebar() {
       label: 'Principal',
       allowedRoles: ['ADMIN', 'VENDEDOR', 'ALMACENISTA', 'RH'],
       items: [
-        { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+        { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { to: '/reportes', label: 'Reportes Avanzados', icon: FileBarChart, roles: ['ADMIN'] },
         { to: '/admin', label: 'Administración Global', icon: Settings, roles: ['ADMIN'] },
       ],
