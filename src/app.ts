@@ -141,7 +141,7 @@ app.use('/api/analytics', authenticateToken, analyticsRoutes);
 // =============================================================================
 // SERVE STATIC FRONTEND IN PRODUCTION
 // =============================================================================
-if (process.env.NODE_ENV === 'production') {
+// Servir siempre el frontend compilado (ignorar NODE_ENV para evitar 404s en Railway)
   app.use(express.static(path.join(__dirname, '../../frontend/dist')));
   
   // Cualquier ruta que no sea de la API, servirá el index.html del frontend
@@ -152,7 +152,6 @@ if (process.env.NODE_ENV === 'production') {
       next();
     }
   });
-}
 
 // =============================================================================
 // 404 CATCH-ALL PARA LA API

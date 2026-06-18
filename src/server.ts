@@ -9,7 +9,7 @@ import { initSocket } from "./lib/socket";
 import { prisma } from "./lib/prisma";
 import bcrypt from "bcrypt";
 
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+const PORT = 3000;
 const HOST = "0.0.0.0";
 
 async function bootstrap(): Promise<void> {
