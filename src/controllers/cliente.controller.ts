@@ -5,9 +5,9 @@ import { z } from 'zod';
 
 const customerSchema = z.object({
   companyName: z.string().min(2),
-  rfc: z.string().min(12).max(13).optional(),
-  email: z.string().email().optional().or(z.literal('')),
-  phone: z.string().optional(),
+  rfc: z.string().min(12).max(13).optional().or(z.literal('').transform(() => undefined)),
+  email: z.string().email().optional().or(z.literal('').transform(() => undefined)),
+  phone: z.string().optional().or(z.literal('').transform(() => undefined)),
   creditLimit: z.number().or(z.string()).transform(val => Number(val)).optional().default(0),
 });
 
