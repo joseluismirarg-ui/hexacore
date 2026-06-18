@@ -62,9 +62,7 @@ export function Login() {
     <div className="flex min-h-screen items-center justify-center bg-hc-bg px-4 py-12 sm:px-6 lg:px-8">
       <div className="w-full max-w-md space-y-8 animate-fade-in">
         <div className="flex flex-col items-center justify-center text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-hc-cobalt to-hc-cobalt-dark shadow-xl shadow-hc-cobalt/20">
-            <Hexagon className="h-8 w-8 text-white" />
-          </div>
+          <img src="/logo-icon.png" alt="HEXA CORE" className="h-24 w-auto drop-shadow-2xl" />
           <h2 className="mt-6 text-3xl font-extrabold text-white tracking-tight">
             Hexa Core Systems
           </h2>

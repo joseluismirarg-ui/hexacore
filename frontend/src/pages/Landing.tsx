@@ -34,10 +34,7 @@ export function Landing() {
       <nav className="border-b border-gray-800 bg-hc-surface/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-hc-cobalt to-hc-cobalt-dark shadow-lg shadow-hc-cobalt/20">
-              <Hexagon className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-lg font-bold tracking-wide">Hexa Core</span>
+            <img src="/logo-full.png" alt="HEXA CORE" className="h-10 w-auto" />
           </div>
           <div className="flex gap-4">
             <Button variant="ghost" onClick={() => navigate('/login')}>Iniciar Sesión</Button>

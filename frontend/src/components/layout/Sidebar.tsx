@@ -104,13 +104,7 @@ export function Sidebar() {
     <aside className="flex h-screen w-64 flex-col border-r border-gray-700/40 bg-hc-surface-dark overflow-y-auto">
       {/* ── Logo ─────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3 border-b border-gray-700/40 px-5 py-5 sticky top-0 bg-hc-surface-dark z-10">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-hc-cobalt/20">
-          <Hexagon className="h-5 w-5 text-hc-cobalt-light" strokeWidth={2.5} />
-        </div>
-        <div>
-          <h1 className="text-sm font-bold tracking-wide text-gray-100">HEXA CORE</h1>
-          <p className="text-xxs font-medium text-gray-500">ERP v2.0</p>
-        </div>
+        <img src="/logo-full.png" alt="HEXA CORE" className="h-8 w-auto" />
       </div>
 
       {/* ── Navigation ───────────────────────────────────────────── */}
