@@ -111,7 +111,8 @@ export function Sidebar() {
           .filter(group => !group.allowedRoles || (user && group.allowedRoles.includes(user.role)))
           .map((group) => {
             const groupItems = group.items.filter(item => {
-              const roleAllowed = !item.roles || (user && item.roles.includes(user.role));
+              const itemRoles = (item as any).roles;
+              const roleAllowed = !itemRoles || (user && itemRoles.includes(user.role));
               const licenseAllowed = !(item as any).moduleKey || license[(item as any).moduleKey] === true || Object.keys(license).length === 0;
               return roleAllowed && licenseAllowed;
             });
