@@ -76,7 +76,7 @@ export const updateEmployee = async (req: Request, res: Response) => {
   try {
     const { id } = req.params; // userId
     const { 
-      name, email, role,
+      name, email, role, password,
       employeeCode, rfc, curp, phone, emergencyContact,
       salaryBase, salaryPeriod, shiftStartTime,
       earnCommission, commissionPercentage,
@@ -84,9 +84,14 @@ export const updateEmployee = async (req: Request, res: Response) => {
     } = req.body;
 
     const result = await prisma.$transaction(async (tx) => {
+      const dataToUpdate: any = { name, email, role };
+      if (password) {
+        dataToUpdate.passwordHash = await bcrypt.hash(password, 10);
+      }
+
       const user = await tx.user.update({
         where: { id },
-        data: { name, email, role }
+        data: dataToUpdate
       });
 
       const profile = await tx.employeeProfile.upsert({
