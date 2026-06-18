@@ -7,7 +7,7 @@
 import app from "./app";
 import { initSocket } from "./lib/socket";
 import { prisma } from "./lib/prisma";
-import bcrypt from "bcrypt";
+import { randomUUID } from 'crypto';
 
 const PORT = 3000;
 const HOST = "0.0.0.0";
@@ -22,7 +22,6 @@ async function bootstrap(): Promise<void> {
     const userCount = await prisma.user.count();
     if (userCount === 0) {
       console.log("[DB]     Base de datos vacía detectada. Creando Super Admin inicial...");
-      const passwordHash = await bcrypt.hash("AdminHexa2026", 10);
       const defaultTenant = await prisma.tenant.upsert({
         where: { id: "default-tenant" },
         update: {},
@@ -38,9 +37,9 @@ async function bootstrap(): Promise<void> {
 
       await prisma.user.create({
         data: {
+          id: randomUUID(),
           email: "admin@hexacore.com",
           name: "Super Admin",
-          passwordHash,
           role: "ADMIN",
           isActive: true,
           tenantId: defaultTenant.id,

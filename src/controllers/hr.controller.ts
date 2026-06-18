@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
-import bcrypt from 'bcrypt';
+import { randomUUID } from 'crypto';
 
 // ============================================================================
 // HR MODULE CONTROLLER (Isolated & Expanded)
@@ -25,22 +25,20 @@ export const createEmployee = async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenant?.id;
     const { 
-      name, email, role, password, 
+      name, email, role, 
       employeeCode, rfc, curp, phone, emergencyContact,
       salaryBase, salaryPeriod, shiftStartTime,
       earnCommission, commissionPercentage,
       productivityBonus, punctualityBonus, attendanceBonus
     } = req.body;
 
-    const passwordHash = await bcrypt.hash(password || '123456', 10);
-
     const result = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
+          id: randomUUID(),
           name,
           email,
           role,
-          passwordHash,
           tenantId
         }
       });
@@ -76,7 +74,7 @@ export const updateEmployee = async (req: Request, res: Response) => {
   try {
     const { id } = req.params; // userId
     const { 
-      name, email, role, password,
+      name, email, role,
       employeeCode, rfc, curp, phone, emergencyContact,
       salaryBase, salaryPeriod, shiftStartTime,
       earnCommission, commissionPercentage,
@@ -84,10 +82,10 @@ export const updateEmployee = async (req: Request, res: Response) => {
     } = req.body;
 
     const result = await prisma.$transaction(async (tx) => {
-      const dataToUpdate: any = { name, email, role };
-      if (password) {
-        dataToUpdate.passwordHash = await bcrypt.hash(password, 10);
-      }
+      const dataToUpdate: any = {};
+      if (name) dataToUpdate.name = name;
+      if (email) dataToUpdate.email = email;
+      if (role) dataToUpdate.role = role;
 
       const user = await tx.user.update({
         where: { id },

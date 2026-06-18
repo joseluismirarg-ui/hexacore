@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma';
-import bcrypt from 'bcrypt';
+import { randomUUID } from 'crypto';
 
 export const getVendedores = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -43,12 +43,11 @@ export const getAllUsers = async (req: Request, res: Response, next: NextFunctio
 
 export const createUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { email, password, name, role } = req.body;
+    const { email, name, role } = req.body;
     const tenantId = (req as any).tenant?.id;
-    const passwordHash = await bcrypt.hash(password, 10);
 
     const user = await prisma.user.create({
-      data: { email, passwordHash, name, role, tenantId },
+      data: { id: randomUUID(), email, name, role, tenantId },
       select: { id: true, email: true, name: true, role: true, isActive: true }
     });
     
@@ -61,12 +60,10 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
 export const updateUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const { name, role, isActive, password } = req.body;
+    const { name, email, role, isActive } = req.body;
     
-    const data: any = { name, role, isActive };
-    if (password) {
-      data.passwordHash = await bcrypt.hash(password, 10);
-    }
+    const data: any = { name, email, role, isActive };
+    // password is handled by supabase
 
     const user = await prisma.user.update({
       where: { id },

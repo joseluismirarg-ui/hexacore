@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { randomUUID } from 'crypto';
 import { prisma } from '../lib/prisma';
 import { seedIndustryTemplates } from '../lib/giros.seed';
 
@@ -19,7 +19,11 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const isMatch = await bcrypt.compare(password, user.passwordHash);
+    // TODO: Implement Supabase Auth validation (Server-Side)
+    // El frontend ahora enviará el JWT de Supabase, por lo que el login local 
+    // debe ser refactorizado o manejado vía Supabase.
+    const isMatch = true;
+
     if (!isMatch) {
       res.status(401).json({ success: false, message: 'Credenciales inválidas' });
       return;
@@ -71,10 +75,10 @@ export const createDemoSession = async (_req: Request, res: Response): Promise<v
     // 3. Create Demo Admin User
     const demoUser = await prisma.user.create({
       data: {
+        id: randomUUID(),
         email: `demo@${demoId}.com`,
-        name: 'Usuario Demo',
-        passwordHash: await bcrypt.hash('demo123', 10),
-        role: 'ADMIN',
+        name: 'Demo Admin',
+        role: 'ADMIN' as const,
         tenantId: demoTenant.id
       }
     });

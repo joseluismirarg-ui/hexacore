@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { login, createDemoSession } from '../controllers/auth.controller';
 import { prisma } from '../lib/prisma';
-import bcrypt from 'bcrypt';
+import { randomUUID } from 'crypto';
 
 const router = Router();
 
@@ -11,29 +11,26 @@ router.get('/seed-test-pro', async (_req: Request, res: Response, next: NextFunc
     const tenant = await prisma.tenant.create({
       data: {
         name: 'Hexa Core Pro Test',
-        industry: 'GENERAL'
+        plan: 'PRO'
       }
     });
 
-    const passwordHash = await bcrypt.hash('prueba1', 10);
-    
     const user = await prisma.user.upsert({
       where: { email: 'prueba1@prueba1.com' },
       update: {
-        passwordHash,
         tenantId: tenant.id,
         role: 'ADMIN'
       },
       create: {
+        id: randomUUID(),
         name: 'Administrador Pro',
         email: 'prueba1@prueba1.com',
-        passwordHash,
         role: 'ADMIN',
         tenantId: tenant.id
       }
     });
 
-    res.json({ success: true, message: 'Cuenta PRO creada', email: user.email, password: 'prueba1' });
+    res.json({ success: true, message: 'Cuenta PRO creada', email: user.email });
   } catch (error) {
     next(error);
   }
