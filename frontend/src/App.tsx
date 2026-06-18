@@ -23,6 +23,7 @@ import RecursosHumanos from '@/pages/RecursosHumanos';
 import AdministracionGlobal from '@/pages/AdministracionGlobal';
 import SuperAdminPanel from '@/pages/SuperAdminPanel';
 import Tesoreria from '@/pages/Tesoreria';
+import Manufactura from '@/pages/Manufactura';
 import { ListasDePrecios } from '@/pages/ListasDePrecios';
 import OnboardingWizard from '@/pages/OnboardingWizard';
 import LandlordDashboard from '@/pages/LandlordDashboard';
@@ -69,10 +70,11 @@ export default function App() {
             <Route path="/cxp" element={<CuentasPorPagar />} />
             <Route path="/tesoreria" element={<Tesoreria />} />
 
-            {/* ── Inventario ─────────────────── */}
+            {/* ── Inventario & Manufactura ─────────────────── */}
             <Route path="/kardex" element={<LogisticaKardex />} />
             <Route path="/productos" element={<CatalogoProductos />} />
             <Route path="/almacenes" element={<GestionAlmacenes />} />
+            <Route path="/manufactura" element={<Manufactura />} />
 
             {/* ── RRHH & CRM ─────────────────── */}
             <Route path="/clientes" element={<DirectorioClientes />} />

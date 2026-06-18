@@ -1,6 +1,8 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useAsync } from '@/lib/hooks';
+import { api } from '@/lib/api';
 import {
   LayoutDashboard,
   PackageSearch,
@@ -24,6 +26,8 @@ import {
 export function Sidebar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { data: licenseData } = useAsync(() => api.get('/api/admin/licenses'), true);
+  const license: any = (licenseData as any)?.data || {};
 
   const handleLogout = () => {
     logout();
@@ -36,7 +40,7 @@ export function Sidebar() {
       allowedRoles: ['ADMIN', 'VENDEDOR', 'ALMACENISTA', 'RH'],
       items: [
         { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-        { to: '/reportes', label: 'Reportes Avanzados', icon: FileBarChart, roles: ['ADMIN'] },
+        { to: '/reportes', label: 'Reportes Avanzados', icon: FileBarChart, roles: ['ADMIN'], moduleKey: 'reportsActive' },
         { to: '/admin', label: 'Administración Global', icon: Settings, roles: ['ADMIN'] },
       ],
     },
@@ -44,10 +48,10 @@ export function Sidebar() {
       label: 'Ventas',
       allowedRoles: ['ADMIN', 'VENDEDOR'],
       items: [
-        { to: '/pos', label: 'Punto de Venta', icon: ShoppingCart },
-        { to: '/consignaciones', label: 'Consignaciones', icon: PackageSearch, roles: ['ADMIN'] },
-        { to: '/liquidacion', label: 'Liquidación', icon: Calculator, roles: ['ADMIN'] },
-        { to: '/facturacion', label: 'Facturación CFDI', icon: FileText, roles: ['ADMIN'] },
+        { to: '/pos', label: 'Punto de Venta', icon: ShoppingCart, moduleKey: 'posActive' },
+        { to: '/consignaciones', label: 'Consignaciones', icon: PackageSearch, roles: ['ADMIN'], moduleKey: 'posActive' },
+        { to: '/liquidacion', label: 'Liquidación', icon: Calculator, roles: ['ADMIN'], moduleKey: 'posActive' },
+        { to: '/facturacion', label: 'Facturación CFDI', icon: FileText, roles: ['ADMIN'], moduleKey: 'billingActive' },
       ],
     },
     {
@@ -56,23 +60,24 @@ export function Sidebar() {
       items: [
         { to: '/cxc', label: 'Cuentas por Cobrar', icon: CreditCard },
         { to: '/cxp', label: 'Cuentas por Pagar', icon: ShoppingBag },
-        { to: '/tesoreria', label: 'Tesorería', icon: Landmark },
+        { to: '/tesoreria', label: 'Tesorería', icon: Landmark, moduleKey: 'treasuryActive' },
       ],
     },
     {
-      label: 'Inventario',
+      label: 'Inventario & Manufactura',
       allowedRoles: ['ADMIN', 'ALMACENISTA', 'VENDEDOR'],
       items: [
         { to: '/almacenes', label: 'Gestión Almacenes', icon: Warehouse, roles: ['ADMIN', 'ALMACENISTA'] },
-        { to: '/kardex', label: 'Logística Kardex', icon: ArrowLeftRight, roles: ['ADMIN', 'ALMACENISTA', 'VENDEDOR'] },
+        { to: '/kardex', label: 'Logística Kardex', icon: ArrowLeftRight, roles: ['ADMIN', 'ALMACENISTA', 'VENDEDOR'], moduleKey: 'logisticsActive' },
         { to: '/productos', label: 'Catálogo Productos', icon: PackageSearch, roles: ['ADMIN', 'ALMACENISTA', 'VENDEDOR'] },
+        { to: '/manufactura', label: 'Manufactura', icon: Hexagon, roles: ['ADMIN'], moduleKey: 'manufacturingActive' },
       ],
     },
     {
       label: 'RH & CRM',
       allowedRoles: ['ADMIN', 'VENDEDOR', 'RH', 'ALMACENISTA'],
       items: [
-        { to: '/hr', label: 'Recursos Humanos', icon: UserCheck },
+        { to: '/hr', label: 'Recursos Humanos', icon: UserCheck, moduleKey: 'hrActive' },
         { to: '/vendedores', label: 'Directorio Vendedores', icon: Users, roles: ['ADMIN', 'RH'] },
         { to: '/clientes', label: 'Directorio Clientes', icon: Users, roles: ['ADMIN', 'VENDEDOR'] },
         { to: '/proveedores', label: 'Directorio Proveedores', icon: Users, roles: ['ADMIN'] },
@@ -105,7 +110,11 @@ export function Sidebar() {
         {navGroups
           .filter(group => !group.allowedRoles || (user && group.allowedRoles.includes(user.role)))
           .map((group) => {
-            const groupItems = group.items.filter(item => !item.roles || (user && item.roles.includes(user.role)));
+            const groupItems = group.items.filter(item => {
+              const roleAllowed = !item.roles || (user && item.roles.includes(user.role));
+              const licenseAllowed = !(item as any).moduleKey || license[(item as any).moduleKey] === true || Object.keys(license).length === 0;
+              return roleAllowed && licenseAllowed;
+            });
 
             if (groupItems.length === 0) return null;
 
