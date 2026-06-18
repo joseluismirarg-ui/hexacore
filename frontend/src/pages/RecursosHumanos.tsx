@@ -1,23 +1,35 @@
 import React, { useState } from 'react';
 import { useAsync } from '../lib/hooks';
 import { hrApi, formatCurrency } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
+import { Clock, Users, CalendarCheck, MapPin, DollarSign, Loader2 } from 'lucide-react';
+import DirectorioEmpleados from './hr/DirectorioEmpleados';
+import PanelAsistencia from './hr/PanelAsistencia';
+import ControlRutas from './hr/ControlRutas';
 
 export default function RecursosHumanos() {
-  const [activeTab, setActiveTab] = useState<'asistencia' | 'nomina'>('asistencia');
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<'reloj' | 'asistencia' | 'empleados' | 'rutas' | 'nomina'>('reloj');
   const [periodo, setPeriodo] = useState('2026-06');
   
   const { data: nominaData, loading: loadingNomina, execute: loadNomina } = useAsync(() => hrApi.payroll(periodo), false);
   const [actionStatus, setActionStatus] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Autorización
+  const isHRManager = user?.role === 'ADMIN' || user?.role === 'RH';
 
   const handleCheckInOut = async () => {
     try {
-      // In a real app we pass the current user token or ID. Backend could deduce it from token.
-      const response = await hrApi.attendance({ userId: 'current-user', checkIn: new Date().toISOString() });
-      const action = (response as any).data?.action || (response as any).action; // 'checkin' | 'checkout'
+      setIsSubmitting(true);
+      const response = await hrApi.attendance({ userId: user?.id });
+      const action = (response as any).data?.checkOut ? 'checkout' : 'checkin';
       setActionStatus(action === 'checkin' ? 'Entrada registrada exitosamente.' : 'Salida registrada exitosamente.');
       setTimeout(() => setActionStatus(null), 3000);
-    } catch (error) {
-      alert('Error al registrar asistencia');
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Error al registrar asistencia');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -31,45 +43,86 @@ export default function RecursosHumanos() {
     <div className="space-y-6 animate-in fade-in">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Recursos Humanos</h1>
-        <p className="text-muted-foreground">Control de asistencia y nómina calculada por comisiones.</p>
+        <p className="text-muted-foreground">Control de personal, asistencia, nómina y rutas.</p>
       </div>
 
-      <div className="border-b border-border">
-        <nav className="-mb-px flex space-x-8">
+      <div className="border-b border-border overflow-x-auto">
+        <nav className="-mb-px flex space-x-6 min-w-max">
           <button
-            onClick={() => setActiveTab('asistencia')}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-              activeTab === 'asistencia'
+            onClick={() => setActiveTab('reloj')}
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${
+              activeTab === 'reloj'
                 ? 'border-primary text-primary'
                 : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
             }`}
           >
-            Reloj Checador
+            <Clock className="w-4 h-4" /> Reloj Checador
           </button>
-          <button
-            onClick={() => { setActiveTab('nomina'); handleLoadNomina(); }}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-              activeTab === 'nomina'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-            }`}
-          >
-            Nómina / Comisiones
-          </button>
+
+          {isHRManager && (
+            <>
+              <button
+                onClick={() => setActiveTab('empleados')}
+                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${
+                  activeTab === 'empleados'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+                }`}
+              >
+                <Users className="w-4 h-4" /> Directorio Empleados
+              </button>
+              
+              <button
+                onClick={() => setActiveTab('asistencia')}
+                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${
+                  activeTab === 'asistencia'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+                }`}
+              >
+                <CalendarCheck className="w-4 h-4" /> Panel Asistencia
+              </button>
+
+              <button
+                onClick={() => setActiveTab('rutas')}
+                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${
+                  activeTab === 'rutas'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+                }`}
+              >
+                <MapPin className="w-4 h-4" /> Control de Rutas
+              </button>
+
+              <button
+                onClick={() => { setActiveTab('nomina'); handleLoadNomina(); }}
+                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${
+                  activeTab === 'nomina'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+                }`}
+              >
+                <DollarSign className="w-4 h-4" /> Nómina / Comisiones
+              </button>
+            </>
+          )}
         </nav>
       </div>
 
-      {activeTab === 'asistencia' && (
+      {/* ── CONTENIDO DE LAS PESTAÑAS ── */}
+      
+      {activeTab === 'reloj' && (
         <div className="max-w-md mx-auto mt-12 bg-card border rounded-xl p-8 text-center shadow-sm">
-          <h2 className="text-2xl font-semibold mb-6">Asistencia del Día</h2>
+          <h2 className="text-2xl font-semibold mb-2">Asistencia del Día</h2>
           <p className="text-muted-foreground mb-8 text-sm">
-            Asegúrate de registrar tu entrada al comenzar la jornada y tu salida al finalizarla.
+            {user?.name}, registra tu entrada al comenzar la jornada y tu salida al finalizarla.
           </p>
           <button
             onClick={handleCheckInOut}
-            className="w-full bg-primary text-primary-foreground py-4 rounded-lg font-bold text-lg hover:bg-primary/90 transition-transform active:scale-95"
+            disabled={isSubmitting}
+            className="w-full flex justify-center items-center gap-2 bg-primary text-primary-foreground py-4 rounded-lg font-bold text-lg hover:bg-primary/90 transition-transform active:scale-95 disabled:opacity-70 disabled:pointer-events-none"
           >
-            Registrar Entrada / Salida
+            {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Registrar Entrada / Salida'}
           </button>
           {actionStatus && (
             <div className="mt-6 p-4 rounded bg-green-500/10 text-green-600 font-medium border border-green-500/20">
@@ -79,9 +132,13 @@ export default function RecursosHumanos() {
         </div>
       )}
 
-      {activeTab === 'nomina' && (
+      {activeTab === 'empleados' && isHRManager && <DirectorioEmpleados />}
+      {activeTab === 'asistencia' && isHRManager && <PanelAsistencia />}
+      {activeTab === 'rutas' && isHRManager && <ControlRutas />}
+
+      {activeTab === 'nomina' && isHRManager && (
         <div className="space-y-4">
-          <div className="flex justify-between items-center bg-muted/50 p-4 rounded-lg border">
+          <div className="flex justify-between items-center bg-card p-4 rounded-xl border border-border">
             <div className="flex items-center gap-4">
               <label className="text-sm font-medium">Periodo:</label>
               <input
@@ -100,16 +157,16 @@ export default function RecursosHumanos() {
           </div>
 
           {loadingNomina ? (
-            <p>Calculando nómina...</p>
+            <p className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Calculando nómina...</p>
           ) : (
-            <div className="rounded-md border bg-card">
+            <div className="rounded-xl border bg-card overflow-hidden">
               <table className="w-full text-sm text-left">
                 <thead className="text-xs uppercase bg-muted text-muted-foreground">
                   <tr>
                     <th className="px-6 py-3">Empleado</th>
                     <th className="px-6 py-3">Periodo</th>
                     <th className="px-6 py-3 text-right">Sueldo Base</th>
-                    <th className="px-6 py-3 text-right">Comisiones Generadas</th>
+                    <th className="px-6 py-3 text-right">Bonos y Comisiones</th>
                     <th className="px-6 py-3 text-right text-primary font-bold">Total a Pagar</th>
                   </tr>
                 </thead>
@@ -119,7 +176,7 @@ export default function RecursosHumanos() {
                       <td className="px-6 py-4 font-medium">{p.userName}</td>
                       <td className="px-6 py-4">{p.period}</td>
                       <td className="px-6 py-4 text-right">{formatCurrency(p.baseSalary)}</td>
-                      <td className="px-6 py-4 text-right text-green-600 font-medium">
+                      <td className="px-6 py-4 text-right text-green-500 font-medium">
                         + {formatCurrency(p.commissions)}
                       </td>
                       <td className="px-6 py-4 text-right font-bold text-base">

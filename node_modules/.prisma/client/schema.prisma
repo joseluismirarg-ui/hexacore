@@ -122,6 +122,7 @@ model Tenant {
   kardexMovements       KardexMovement[]
   billOfMaterials       BillOfMaterials[]
   predictiveStockAlerts PredictiveStockAlert[]
+  RouteVisit            RouteVisit[]
 
   @@map("tenants")
 }
@@ -150,6 +151,7 @@ model User {
   salesOrders     SalesOrder[]
   employeeProfile EmployeeProfile?
   Ticket          Ticket[]
+  routeVisits     RouteVisit[]
 
   @@map("users")
 }
@@ -180,6 +182,7 @@ model Customer {
   inventoryLocations InventoryLocation[]
   payments           Payment[]
   invoices           Invoice[]
+  RouteVisit         RouteVisit[]
 
   @@map("customers")
 }
@@ -750,16 +753,51 @@ model ModuleLicense {
 // =============================================================================
 
 model EmployeeProfile {
-  id                   String   @id @default(uuid())
-  userId               String   @unique
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  rfc                  String   @unique
-  curp                 String   @unique
-  phone                String
-  salaryBase           String
-  earnCommission       Boolean  @default(false)
-  commissionPercentage String   @default("0.00")
-  createdAt            DateTime @default(now())
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  employeeCode     String? @unique @map("employee_code")
+  rfc              String  @unique
+  curp             String  @unique
+  phone            String
+  emergencyContact String? @map("emergency_contact")
+
+  salaryBase     String @map("salary_base")
+  salaryPeriod   String @default("QUINCENAL") @map("salary_period") // SEMANAL, QUINCENAL, MENSUAL
+  shiftStartTime String @default("09:00") @map("shift_start_time") // HH:mm
+
+  earnCommission       Boolean @default(false) @map("earn_commission")
+  commissionPercentage String  @default("0.00") @map("commission_percentage")
+
+  productivityBonus Decimal @default(0.00) @map("productivity_bonus") @db.Decimal(10, 2)
+  punctualityBonus  Decimal @default(0.00) @map("punctuality_bonus") @db.Decimal(10, 2)
+  attendanceBonus   Decimal @default(0.00) @map("attendance_bonus") @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("employee_profiles")
+}
+
+// =============================================================================
+// SELLER ROUTES / VISITS
+// =============================================================================
+
+model RouteVisit {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id") // Vendedor
+  user       User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  customerId String   @map("customer_id")
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
+  visitDate DateTime @default(now()) @map("visit_date")
+  status    String   @default("COMPLETED") // COMPLETED, PENDING, CANCELLED
+  notes     String?  @db.Text
+
+  tenantId String @default("default-tenant") @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("route_visits")
 }
 
 // =============================================================================

@@ -70,9 +70,9 @@ export function Sidebar() {
     },
     {
       label: 'RH & CRM',
-      allowedRoles: ['ADMIN', 'VENDEDOR', 'RH'],
+      allowedRoles: ['ADMIN', 'VENDEDOR', 'RH', 'ALMACENISTA'],
       items: [
-        { to: '/hr', label: 'Recursos Humanos', icon: UserCheck, roles: ['ADMIN', 'RH'] },
+        { to: '/hr', label: 'Recursos Humanos', icon: UserCheck },
         { to: '/vendedores', label: 'Directorio Vendedores', icon: Users, roles: ['ADMIN', 'RH'] },
         { to: '/clientes', label: 'Directorio Clientes', icon: Users, roles: ['ADMIN', 'VENDEDOR'] },
         { to: '/proveedores', label: 'Directorio Proveedores', icon: Users, roles: ['ADMIN'] },

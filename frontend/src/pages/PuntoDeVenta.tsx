@@ -12,11 +12,18 @@ import {
   X,
   Package,
   Loader2,
+  Percent,
+  Calculator,
+  Store,
+  Wallet,
+  Clock,
+  MapPin
 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
-import { formatCurrency, productosApi, clientesApi, usuariosApi, transaccionesApi, ApiError } from '@/lib/api';
+import { formatCurrency, productosApi, clientesApi, usuariosApi, transaccionesApi, hrApi, ApiError } from '@/lib/api';
 
 interface Product {
   id: string;
@@ -117,11 +124,16 @@ export function PuntoDeVenta() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [paymentType, setPaymentType] = useState<'VENTA_DIRECTA' | 'CREDITO' | 'CONSIGNACION'>('VENTA_DIRECTA');
+  const [success, setSuccess] = useState(false);
+  const { user } = useAuth();
+  
+  // Modals y UI States
   const [paymentModal, setPaymentModal] = useState(false);
-  const [paymentType, setPaymentType] = useState<'VENTA_DIRECTA' | 'CREDITO'>('VENTA_DIRECTA');
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false); // Bloqueo síncrono para prevenir doble click
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [visitStatus, setVisitStatus] = useState<string | null>(null);
 
   // Estados para descuentos (flexibilidad de precios B2B)
   const [discountType, setDiscountType] = useState<'PORCENTAJE' | 'MONTO' | null>(null);
@@ -352,7 +364,7 @@ export function PuntoDeVenta() {
 
   // ── Submit ────────────────────────────────────────────────────────────────
   const handleCobrar = async () => {
-    // Bloqueo síncrono inmediato (no depende de estado asíncrono)
+    // ... logic remains
     if (submittingRef.current) return;
     if (!selectedCustomer || !selectedUser || cart.length === 0) return;
 
@@ -361,8 +373,6 @@ export function PuntoDeVenta() {
     setSubmitError(null);
 
     try {
-      // PRECISIÓN FINANCIERA: precioAplicado desde fuente original (DB)
-      // EL TOTAL NO SE ENVÍA: Backend recalcula soberanamente para evitar manipulación
       const items = cart.map((i) => {
         const precioOriginal = Number(i.product.price);
         let precioFinal = precioOriginal;
@@ -398,6 +408,26 @@ export function PuntoDeVenta() {
     }
   };
 
+  const handleRegistrarVisita = async () => {
+    if (!selectedCustomer) {
+      alert("Debes seleccionar un cliente primero para registrar la visita.");
+      return;
+    }
+    try {
+      setSubmitting(true);
+      await hrApi.registrarVisita({
+        customerId: selectedCustomer.id,
+        notes: "Visita registrada desde Punto de Venta"
+      });
+      setVisitStatus("Visita de ruta registrada con éxito.");
+      setTimeout(() => setVisitStatus(null), 3000);
+    } catch (err: any) {
+      alert(err.response?.data?.error || "Error al registrar la visita.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const resetPos = () => {
     setSuccess(false);
     setSelectedCustomer(null);
@@ -426,10 +456,27 @@ export function PuntoDeVenta() {
 
   return (
     <div className="animate-fade-in space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-50">Punto de Venta</h1>
-        <p className="mt-1 text-sm text-gray-500">POS · Registro de ventas directas y a crédito</p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-50">Punto de Venta</h1>
+          <p className="mt-1 text-sm text-gray-500">POS · Registro de ventas directas y a crédito</p>
+        </div>
+        {user?.role === 'VENDEDOR' && selectedCustomer && (
+          <button 
+            onClick={handleRegistrarVisita}
+            disabled={submitting}
+            className="flex items-center gap-2 bg-hc-cobalt/20 text-hc-cobalt-light px-4 py-2 rounded-lg text-sm font-medium hover:bg-hc-cobalt/30 transition-colors border border-hc-cobalt/30"
+          >
+            <MapPin className="w-4 h-4" /> Registrar Visita de Ruta
+          </button>
+        )}
       </div>
+
+      {visitStatus && (
+        <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-500 text-sm font-medium flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4" /> {visitStatus}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
         {/* ═══ LEFT — Buscador de productos ═══ */}

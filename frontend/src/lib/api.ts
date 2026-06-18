@@ -207,8 +207,23 @@ export const warehousesApi = {
 
 // Recursos Humanos
 export const hrApi = {
-  attendance: (body: unknown) => api.post('/api/hr/attendance', body),
+  // Directorio y Perfiles
+  empleados: () => api.get('/api/hr/employees'),
+  crearEmpleado: (body: unknown) => api.post('/api/hr/employees', body),
+  actualizarEmpleado: (id: string, body: unknown) => api.put(`/api/hr/employees/${id}`, body),
+
+  // Asistencia
+  attendance: (body?: unknown) => api.post('/api/hr/attendance', body || {}),
+  attendanceDashboard: () => api.get('/api/hr/attendance/dashboard'),
+
+  // Rutas de Vendedores
+  registrarVisita: (body: unknown) => api.post('/api/hr/routes/visit', body),
+  listarVisitas: () => api.get('/api/hr/routes/visits'),
+
+  // Nómina y Permisos
   payroll: (period?: string) => api.get(`/api/hr/payroll${period ? `?period=${period}` : ''}`),
+  requestLeave: (body: unknown) => api.post('/api/hr/leave', body),
+  approveLeave: (id: string) => api.put(`/api/hr/leave/${id}/approve`, {}),
 };
 
 // Configuración del Sistema
