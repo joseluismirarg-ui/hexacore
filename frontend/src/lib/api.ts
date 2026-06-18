@@ -137,6 +137,7 @@ export const clientesApi = {
   listar: () => api.get('/api/customers'),
   consignaciones: () => api.get('/api/customers/consignaciones'),
   crear: (body: unknown) => api.post('/api/customers', body),
+  actualizar: (id: string, body: unknown) => api.put(`/api/customers/${id}`, body),
 };
 
 // Transacciones (POS)

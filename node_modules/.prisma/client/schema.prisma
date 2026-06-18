@@ -167,6 +167,7 @@ model Customer {
 
   creditLimit Decimal @map("credit_limit") @db.Decimal(14, 2)
   currentDebt Decimal @map("current_debt") @db.Decimal(14, 2)
+  creditDays  Int     @default(0) @map("credit_days")
 
   priceListId String?    @map("price_list_id")
   priceList   PriceList? @relation(fields: [priceListId], references: [id])

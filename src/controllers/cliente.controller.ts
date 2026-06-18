@@ -9,6 +9,7 @@ const customerSchema = z.object({
   email: z.string().email().optional().or(z.literal('').transform(() => undefined)),
   phone: z.string().optional().or(z.literal('').transform(() => undefined)),
   creditLimit: z.number().or(z.string()).transform(val => Number(val)).optional().default(0),
+  creditDays: z.number().or(z.string()).transform(val => Number(val)).optional().default(0),
 });
 
 export const getClientes = async (_req: Request, res: Response, next: NextFunction) => {
@@ -32,6 +33,22 @@ export const createCustomer = async (req: Request, res: Response, next: NextFunc
       }
     });
     res.status(201).json({ success: true, data: customer });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateCustomer = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const data = customerSchema.parse(req.body);
+    
+    const customer = await prisma.customer.update({
+      where: { id },
+      data,
+    });
+    
+    res.status(200).json({ success: true, data: customer });
   } catch (error) {
     next(error);
   }

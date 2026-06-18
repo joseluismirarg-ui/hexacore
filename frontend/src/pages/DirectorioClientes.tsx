@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { Users, TrendingUp, AlertTriangle, Search } from 'lucide-react';
+import React, { useEffect, useState, useMemo } from 'react';
+import { Users, TrendingUp, AlertTriangle, Search, Plus, Edit2 } from 'lucide-react';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
 import { formatCurrency, clientesApi, ApiError } from '@/lib/api';
 
 interface Customer {
@@ -13,6 +14,7 @@ interface Customer {
   phone?: string;
   creditLimit: string;
   currentDebt: string;
+  creditDays?: number;
 }
 
 function CreditBar({ debt, limit }: { debt: string; limit: string }) {
@@ -34,74 +36,6 @@ function CreditBar({ debt, limit }: { debt: string; limit: string }) {
   );
 }
 
-const columns: Column<Customer>[] = [
-  {
-    header: 'Empresa',
-    accessor: 'companyName',
-    sortable: true,
-    render: (row) => (
-      <div>
-        <p className="font-medium text-gray-100">{row?.companyName}</p>
-        {row?.rfc && <p className="font-mono text-xxs text-gray-500">{row?.rfc}</p>}
-      </div>
-    ),
-  },
-  {
-    header: 'Contacto',
-    accessor: 'email',
-    render: (row) => (
-      <div className="text-xs text-gray-400">
-        {row?.email && <p>{row?.email}</p>}
-        {row?.phone && <p>{row?.phone}</p>}
-        {!row?.email && !row?.phone && <span className="text-gray-600">—</span>}
-      </div>
-    ),
-  },
-  {
-    header: 'Límite Crédito',
-    accessor: 'creditLimit',
-    align: 'right',
-    sortable: true,
-    render: (row) => (
-      <span className="font-mono text-sm text-gray-300">
-        {formatCurrency(row?.creditLimit)}
-      </span>
-    ),
-  },
-  {
-    header: 'Deuda Actual',
-    accessor: 'currentDebt',
-    align: 'right',
-    sortable: true,
-    render: (row) => (
-      <span
-        className={`font-mono text-sm font-semibold ${
-          Number(row?.currentDebt || 0) > 0 ? 'text-hc-coral-light' : 'text-hc-emerald'
-        }`}
-      >
-        {formatCurrency(row?.currentDebt)}
-      </span>
-    ),
-  },
-  {
-    header: 'Utilización',
-    accessor: 'creditLimit',
-    render: (row) => <CreditBar debt={row?.currentDebt || '0'} limit={row?.creditLimit || '0'} />,
-  },
-  {
-    header: 'Estado',
-    accessor: 'currentDebt',
-    render: (row) => {
-      const pct = Number(row?.creditLimit || 0) > 0
-        ? (Number(row?.currentDebt || 0) / Number(row?.creditLimit || 0)) * 100
-        : 0;
-      if (pct >= 90) return <Badge variant="coral" dot size="sm">Bloqueado</Badge>;
-      if (pct >= 60) return <Badge variant="amber" dot size="sm">Próximo a vencer</Badge>;
-      return <Badge variant="emerald" dot size="sm">Al corriente</Badge>;
-    },
-  },
-];
-
 // ═════════════════════════════════════════════════════════════════════════════
 export function DirectorioClientes() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -109,23 +43,169 @@ export function DirectorioClientes() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
+  const [showModal, setShowModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    id: '',
+    companyName: '',
+    rfc: '',
+    email: '',
+    phone: '',
+    creditLimit: '0',
+    creditDays: '0'
+  });
+
+  const load = async () => {
+    try {
+      setIsLoading(true);
+      const res = await clientesApi.listar() as any;
+      setCustomers(res.data ?? []);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Error al cargar clientes');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const res = await clientesApi.listar() as any;
-        console.log('👥 DATOS DE CLIENTES RECIBIDOS:', res.data);
-        if (!cancelled) setCustomers(res.data ?? []);
-      } catch (err) {
-        if (!cancelled)
-          setError(err instanceof ApiError ? err.message : 'Error al cargar clientes');
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    };
     load();
-    return () => { cancelled = true; };
-  }, []); // [] estricto
+  }, []);
+
+  const handleEdit = (customer: Customer) => {
+    setFormData({
+      id: customer.id,
+      companyName: customer.companyName,
+      rfc: customer.rfc || '',
+      email: customer.email || '',
+      phone: customer.phone || '',
+      creditLimit: customer.creditLimit.toString(),
+      creditDays: (customer.creditDays || 0).toString()
+    });
+    setIsEditing(true);
+    setShowModal(true);
+  };
+
+  const handleCreate = () => {
+    setFormData({ id: '', companyName: '', rfc: '', email: '', phone: '', creditLimit: '0', creditDays: '0' });
+    setIsEditing(false);
+    setShowModal(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const payload = {
+        companyName: formData.companyName,
+        rfc: formData.rfc,
+        email: formData.email,
+        phone: formData.phone,
+        creditLimit: Number(formData.creditLimit),
+        creditDays: Number(formData.creditDays)
+      };
+
+      if (isEditing) {
+        await clientesApi.actualizar(formData.id, payload);
+      } else {
+        await clientesApi.crear(payload);
+      }
+      setShowModal(false);
+      await load();
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : 'Error al guardar el cliente');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const columns = useMemo<Column<Customer>[]>(() => [
+    {
+      header: 'Empresa',
+      accessor: 'companyName',
+      sortable: true,
+      render: (row) => (
+        <div>
+          <p className="font-medium text-gray-100">{row?.companyName}</p>
+          {row?.rfc && <p className="font-mono text-xxs text-gray-500">{row?.rfc}</p>}
+        </div>
+      ),
+    },
+    {
+      header: 'Contacto',
+      accessor: 'email',
+      render: (row) => (
+        <div className="text-xs text-gray-400">
+          {row?.email && <p>{row?.email}</p>}
+          {row?.phone && <p>{row?.phone}</p>}
+          {!row?.email && !row?.phone && <span className="text-gray-600">—</span>}
+        </div>
+      ),
+    },
+    {
+      header: 'Límite Crédito',
+      accessor: 'creditLimit',
+      align: 'right',
+      sortable: true,
+      render: (row) => (
+        <span className="font-mono text-sm text-gray-300">
+          {formatCurrency(row?.creditLimit)}
+        </span>
+      ),
+    },
+    {
+      header: 'Días',
+      accessor: 'creditDays',
+      align: 'center',
+      render: (row) => (
+        <span className="font-mono text-sm text-gray-400">
+          {row?.creditDays || 0}
+        </span>
+      ),
+    },
+    {
+      header: 'Deuda Actual',
+      accessor: 'currentDebt',
+      align: 'right',
+      sortable: true,
+      render: (row) => (
+        <span
+          className={`font-mono text-sm font-semibold ${
+            Number(row?.currentDebt || 0) > 0 ? 'text-hc-coral-light' : 'text-hc-emerald'
+          }`}
+        >
+          {formatCurrency(row?.currentDebt)}
+        </span>
+      ),
+    },
+    {
+      header: 'Utilización',
+      accessor: 'creditLimit',
+      render: (row) => <CreditBar debt={row?.currentDebt || '0'} limit={row?.creditLimit || '0'} />,
+    },
+    {
+      header: 'Estado',
+      accessor: 'currentDebt',
+      render: (row) => {
+        const pct = Number(row?.creditLimit || 0) > 0
+          ? (Number(row?.currentDebt || 0) / Number(row?.creditLimit || 0)) * 100
+          : 0;
+        if (pct >= 90) return <Badge variant="coral" dot size="sm">Bloqueado</Badge>;
+        if (pct >= 60) return <Badge variant="amber" dot size="sm">Próximo a vencer</Badge>;
+        return <Badge variant="emerald" dot size="sm">Al corriente</Badge>;
+      },
+    },
+    {
+      header: '',
+      accessor: 'id',
+      align: 'right',
+      render: (row) => (
+        <button onClick={() => handleEdit(row)} className="p-1.5 text-gray-400 hover:text-hc-cobalt-light hover:bg-hc-cobalt/10 rounded-md transition-colors">
+          <Edit2 className="h-4 w-4" />
+        </button>
+      ),
+    }
+  ], []);
 
   const filtered = (customers || []).filter((c) =>
     search === '' ||
@@ -138,9 +218,14 @@ export function DirectorioClientes() {
 
   return (
     <div className="animate-fade-in space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-50">Directorio de Clientes</h1>
-        <p className="mt-1 text-sm text-gray-500">CRM · Cartera y crédito B2B</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-50">Directorio de Clientes</h1>
+          <p className="mt-1 text-sm text-gray-500">CRM · Cartera y crédito B2B</p>
+        </div>
+        <Button variant="primary" onClick={handleCreate} className="gap-2 shrink-0">
+          <Plus className="h-4 w-4" /> Nuevo Cliente
+        </Button>
       </div>
 
       {/* KPIs */}
@@ -212,6 +297,90 @@ export function DirectorioClientes() {
           />
         )}
       </div>
+
+      {/* Modal Crear/Editar Cliente */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-hc-surface p-6 rounded-lg shadow-lg w-full max-w-md border border-gray-700/50">
+            <h2 className="text-xl font-bold mb-4 text-gray-100">
+              {isEditing ? 'Editar Cliente' : 'Crear Cliente'}
+            </h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-200">Empresa / Nombre Comercial</label>
+                <input
+                  type="text"
+                  required
+                  className="input-field"
+                  value={formData.companyName}
+                  onChange={e => setFormData({ ...formData, companyName: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-200">RFC (Opcional)</label>
+                <input
+                  type="text"
+                  className="input-field"
+                  value={formData.rfc}
+                  onChange={e => setFormData({ ...formData, rfc: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-200">Correo (Opcional)</label>
+                  <input
+                    type="email"
+                    className="input-field"
+                    value={formData.email}
+                    onChange={e => setFormData({ ...formData, email: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-200">Teléfono (Opcional)</label>
+                  <input
+                    type="tel"
+                    className="input-field"
+                    value={formData.phone}
+                    onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-200">Límite Crédito ($)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="input-field"
+                    value={formData.creditLimit}
+                    onChange={e => setFormData({ ...formData, creditLimit: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-200">Días de Crédito</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    className="input-field"
+                    value={formData.creditDays}
+                    onChange={e => setFormData({ ...formData, creditDays: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 mt-6">
+                <Button variant="ghost" type="button" onClick={() => setShowModal(false)}>
+                  Cancelar
+                </Button>
+                <Button variant="primary" type="submit" loading={submitting}>
+                  {isEditing ? 'Guardar Cambios' : 'Crear Cliente'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
