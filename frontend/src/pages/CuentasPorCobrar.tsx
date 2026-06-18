@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { formatCurrency, formatDate, cobranzaApi, ApiError } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 
 interface CustomerDebt {
   id: string;
@@ -27,6 +28,7 @@ const PAYMENT_METHODS = [
 
 // ═════════════════════════════════════════════════════════════════════════════
 export function CuentasPorCobrar() {
+  const { user } = useAuth();
   const [customers, setCustomers] = useState<CustomerDebt[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,11 +68,11 @@ export function CuentasPorCobrar() {
     setSubmitSuccess(false);
 
     try {
-      // PRECISIÓN FINANCIERA: amount viaja como string.toString().trim()
+      // PRECISIÓN FINANCIERA: amount viaja como number
       const res = await cobranzaApi.abonar({
         customerId: selectedCustomer.id,
-        monto: amount.toString().trim(),
-        userId: 'admin_placeholder', // En producción: ID del usuario autenticado
+        monto: Number(amount),
+        userId: user?.id || '', // Usa el ID del usuario autenticado
         notas: notes.trim() || undefined,
       }) as any;
 
