@@ -20,6 +20,16 @@ export default function GestionAlmacenes() {
     }
   };
 
+  const handleDelete = async (id: string, name: string) => {
+    if (!window.confirm(`¿Estás seguro de que deseas eliminar el almacén "${name}"?`)) return;
+    try {
+      await warehousesApi.eliminar(id);
+      execute();
+    } catch (err: any) {
+      alert(err.message || 'Error al eliminar almacén');
+    }
+  };
+
   const almacenes: any[] = (data as any)?.data || [];
 
   const handleStartAudit = (warehouse: any) => {
@@ -70,6 +80,13 @@ export default function GestionAlmacenes() {
                 className="w-full rounded-md bg-hc-cobalt/10 px-4 py-2 text-sm font-medium text-hc-cobalt transition-colors hover:bg-hc-cobalt/20"
               >
                 Conteo Cíclico
+              </button>
+              <button 
+                onClick={() => handleDelete(almacen.id, almacen.name)}
+                className="rounded-md border border-hc-coral/30 bg-hc-coral/10 px-4 py-2 text-sm font-medium text-hc-coral transition-colors hover:bg-hc-coral/20"
+                title="Eliminar Almacén"
+              >
+                Borrar
               </button>
             </div>
           </div>

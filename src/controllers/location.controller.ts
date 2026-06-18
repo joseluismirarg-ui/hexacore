@@ -166,3 +166,25 @@ export const completeAudit = async (req: Request, res: Response, next: NextFunct
     next(error);
   }
 };
+
+export const deleteWarehouse = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    
+    // Verificar si tiene inventario
+    const count = await prisma.inventory.count({ where: { locationId: id } });
+    if (count > 0) {
+      res.status(400).json({ success: false, error: 'No se puede eliminar un almacén con inventario asociado.' });
+      return;
+    }
+
+    await prisma.location.delete({ where: { id } });
+    res.json({ success: true, message: 'Almacén eliminado correctamente' });
+  } catch (error: any) {
+    if (error.code === 'P2003') {
+      res.status(400).json({ success: false, error: 'No se puede eliminar el almacén porque tiene movimientos o auditorías asociadas.' });
+      return;
+    }
+    next(error);
+  }
+};

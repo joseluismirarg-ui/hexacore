@@ -46,6 +46,7 @@ async function request<T>(
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
+    cache: 'no-store',
   });
 
   const json = await response.json().catch(() => ({
@@ -202,6 +203,7 @@ export const facturasApi = {
 export const warehousesApi = {
   listar: () => api.get('/api/warehouses'),
   crear: (body: unknown) => api.post('/api/warehouses', body),
+  eliminar: (id: string) => api.delete(`/api/warehouses/${id}`),
   dashboard: (id: string) => api.get(`/api/warehouses/${id}/dashboard`),
 };
 
