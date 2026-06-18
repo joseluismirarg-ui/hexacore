@@ -265,12 +265,14 @@ export async function recibirMercancia(
 // Listado de proveedores
 // =============================================================================
 export async function listarProveedores(
-  _req: Request,
+  req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> {
   try {
+    const tenantId = (req as any).tenant?.id;
     const suppliers = await prisma.supplier.findMany({
+      where: tenantId ? { tenantId } : undefined,
       orderBy: { name: 'asc' },
       include: { _count: { select: { purchaseOrders: true } } },
     });
@@ -292,7 +294,14 @@ const supplierSchema = z.object({
 export async function crearProveedor(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const data = supplierSchema.parse(req.body);
-    const supplier = await prisma.supplier.create({ data });
+    const tenantId = (req as any).tenant?.id;
+    
+    const supplier = await prisma.supplier.create({ 
+      data: {
+        ...data,
+        tenantId
+      }
+    });
     res.status(201).json({ success: true, data: supplier });
   } catch (err) {
     next(err);
