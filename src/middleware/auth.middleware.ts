@@ -1,12 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { prisma } from '../lib/prisma';
-
-interface JwtPayload {
-  userId: string;
-  role: string;
-  tenantId?: string;
-}
 
 export const authenticateToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const authHeader = req.headers['authorization'];
@@ -18,16 +11,19 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret') as JwtPayload;
+    // Supabase firma sus JWT con el JWT Secret del proyecto
+    const decoded = jwt.verify(token, process.env.SUPABASE_JWT_SECRET || process.env.JWT_SECRET || 'fallback_secret') as any;
     
-    // Opcional pero recomendado: verificar que el usuario no fue borrado/bloqueado
-    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
-    if (!user) {
-      res.status(401).json({ success: false, message: 'Usuario no encontrado' });
-      return;
-    }
+    // Extraer rol y tenantId de los metadatos de Supabase
+    const role = decoded.user_metadata?.role || 'USER';
+    const tenantId = decoded.user_metadata?.tenantId || 'default-tenant';
 
-    req.user = { id: user.id, role: user.role, tenantId: user.tenantId };
+    req.user = { 
+      id: decoded.sub, // 'sub' es el ID de usuario en Supabase
+      role: role, 
+      tenantId: tenantId 
+    };
+    
     next();
   } catch (error) {
     res.status(403).json({ success: false, message: 'Token inválido o expirado' });
