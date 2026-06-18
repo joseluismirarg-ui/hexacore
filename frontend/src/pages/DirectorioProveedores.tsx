@@ -14,8 +14,8 @@ export default function DirectorioProveedores() {
       setShowModal(false);
       setFormData({ name: '', rfc: '', email: '', phone: '', address: '' });
       execute();
-    } catch (err) {
-      alert('Error al crear proveedor');
+    } catch (err: any) {
+      alert(err.response?.data?.error || err.message || 'Error al crear proveedor');
     }
   };
 
@@ -100,6 +100,7 @@ export default function DirectorioProveedores() {
                 <input
                   type="text"
                   required
+                  minLength={12}
                   maxLength={13}
                   className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 uppercase"
                   value={formData.rfc}
