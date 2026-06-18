@@ -13,16 +13,17 @@ export default function DirectorioEmpleados() {
 
   const employees = (employeesData as any)?.data || [];
 
-  const columns: Column[] = [
-    { header: 'Matrícula', accessor: (row) => row.employeeProfile?.employeeCode || 'S/N' },
+  const columns: Column<any>[] = [
+    { header: 'Matrícula', accessor: 'employeeCode', render: (row: any) => row.employeeProfile?.employeeCode || 'S/N' },
     { header: 'Nombre', accessor: 'name' },
     { header: 'Email', accessor: 'email' },
     { header: 'Rol', accessor: 'role' },
-    { header: 'Teléfono', accessor: (row) => row.employeeProfile?.phone || 'N/D' },
-    { header: 'Tipo Sueldo', accessor: (row) => row.employeeProfile?.salaryPeriod || 'N/D' },
+    { header: 'Teléfono', accessor: 'phone', render: (row: any) => row.employeeProfile?.phone || 'N/D' },
+    { header: 'Tipo Sueldo', accessor: 'salaryPeriod', render: (row: any) => row.employeeProfile?.salaryPeriod || 'N/D' },
     { 
       header: 'Acciones', 
-      accessor: (row) => (
+      accessor: 'actions',
+      render: (row: any) => (
         <button className="text-gray-400 hover:text-white" onClick={() => alert('Próximamente: Editar empleado ' + row.name)}>
           <Edit2 className="w-4 h-4" />
         </button>
@@ -44,7 +45,11 @@ export default function DirectorioEmpleados() {
       </div>
 
       <div className="bg-card rounded-xl border border-border overflow-hidden p-1">
-        <DataTable columns={columns} data={employees} loading={loading} />
+        {loading ? (
+          <div className="p-4 text-center text-sm text-gray-500">Cargando...</div>
+        ) : (
+          <DataTable columns={columns} data={employees} keyExtractor={(row: any) => row.id} />
+        )}
       </div>
     </div>
   );

@@ -13,14 +13,15 @@ export default function ControlRutas() {
 
   const visits = (routesData as any)?.data || [];
 
-  const columns: Column[] = [
-    { header: 'Fecha y Hora', accessor: (row) => new Date(row.visitDate).toLocaleString() },
-    { header: 'Vendedor', accessor: (row) => row.user?.name || '---' },
-    { header: 'Cliente Visitado', accessor: (row) => row.customer?.companyName || '---' },
-    { header: 'Notas / Ubicación', accessor: (row) => row.notes || 'Visita registrada' },
+  const columns: Column<any>[] = [
+    { header: 'Fecha y Hora', accessor: 'visitDate', render: (row: any) => new Date(row.visitDate).toLocaleString() },
+    { header: 'Vendedor', accessor: 'user', render: (row: any) => row.user?.name || '---' },
+    { header: 'Cliente Visitado', accessor: 'customer', render: (row: any) => row.customer?.companyName || '---' },
+    { header: 'Notas / Ubicación', accessor: 'notes', render: (row: any) => row.notes || 'Visita registrada' },
     { 
       header: 'Estatus', 
-      accessor: (row) => (
+      accessor: 'status',
+      render: (row: any) => (
         <span className="bg-green-500/10 text-green-500 px-2 py-1 rounded text-xs font-medium border border-green-500/20">
           {row.status}
         </span>
@@ -45,7 +46,11 @@ export default function ControlRutas() {
       </div>
 
       <div className="bg-card rounded-xl border border-border overflow-hidden p-1">
-        <DataTable columns={columns} data={visits} loading={loading} />
+        {loading ? (
+          <div className="p-4 text-center text-sm text-gray-500">Cargando...</div>
+        ) : (
+          <DataTable columns={columns} data={visits} keyExtractor={(row: any) => row.id} />
+        )}
       </div>
     </div>
   );

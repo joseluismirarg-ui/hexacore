@@ -13,19 +13,22 @@ export default function PanelAsistencia() {
 
   const attendances = (attendanceData as any)?.data || [];
 
-  const columns: Column[] = [
-    { header: 'Empleado', accessor: (row) => row.user?.name || 'Desconocido' },
+  const columns: Column<any>[] = [
+    { header: 'Empleado', accessor: 'user', render: (row: any) => row.user?.name || 'Desconocido' },
     { 
       header: 'Hora Entrada', 
-      accessor: (row) => row.checkIn ? new Date(row.checkIn).toLocaleTimeString() : '---' 
+      accessor: 'checkIn',
+      render: (row: any) => row.checkIn ? new Date(row.checkIn).toLocaleTimeString() : '---' 
     },
     { 
       header: 'Hora Salida', 
-      accessor: (row) => row.checkOut ? new Date(row.checkOut).toLocaleTimeString() : '---' 
+      accessor: 'checkOut',
+      render: (row: any) => row.checkOut ? new Date(row.checkOut).toLocaleTimeString() : '---' 
     },
     { 
       header: 'Estatus Puntualidad', 
-      accessor: (row) => {
+      accessor: 'status',
+      render: (row: any) => {
         if (!row.checkIn) return <span className="text-gray-500">Pendiente</span>;
         
         const shiftStartStr = row.user?.employeeProfile?.shiftStartTime || '09:00';
@@ -72,7 +75,11 @@ export default function PanelAsistencia() {
       </div>
 
       <div className="bg-card rounded-xl border border-border overflow-hidden p-1">
-        <DataTable columns={columns} data={attendances} loading={loading} />
+        {loading ? (
+          <div className="p-4 text-center text-sm text-gray-500">Cargando...</div>
+        ) : (
+          <DataTable columns={columns} data={attendances} keyExtractor={(row: any) => row.id} />
+        )}
       </div>
     </div>
   );

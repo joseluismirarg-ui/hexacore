@@ -250,7 +250,6 @@ export function PuntoDeVenta() {
     setDiscountValue('');
     setDiscountError(null);
   };
-  const [success, setSuccess] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   // Cargar datos iniciales — [] estricto
