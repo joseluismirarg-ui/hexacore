@@ -2,27 +2,27 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Hexagon, CheckCircle2, PlayCircle, Shield, Zap, Database } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { useAuth } from '@/context/AuthContext';
-import { authApi, BASE_URL } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 
 export function Landing() {
   const navigate = useNavigate();
-  const { login } = useAuth();
   const [isDemoLoading, setIsDemoLoading] = useState(false);
 
   const handleDemo = async () => {
     setIsDemoLoading(true);
     try {
-      const res = await fetch(`${BASE_URL}/api/auth/demo`, { method: 'POST' });
-      const data = await res.json();
-      if (res.ok && data.token) {
-        login(data.token, data.user);
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email: 'demo@hexacore.com',
+        password: 'DemoHexa2026',
+      });
+
+      if (authError) throw authError;
+
+      if (data.session) {
         navigate('/dashboard');
-      } else {
-        alert(data.error || 'Error conectando al servidor.');
       }
     } catch (err) {
-      alert('Error de red. Intenta más tarde.');
+      alert('Error iniciando sesión Demo. Contacte a soporte.');
     } finally {
       setIsDemoLoading(false);
     }
