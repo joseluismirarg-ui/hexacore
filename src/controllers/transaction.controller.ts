@@ -20,7 +20,6 @@ import {
 import {
   UnprocessableEntityError,
   NotFoundError,
-  InternalError,
 } from "../lib/errors";
 
 // =============================================================================
