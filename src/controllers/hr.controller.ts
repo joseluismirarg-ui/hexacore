@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
 import bcrypt from 'bcrypt';
-import { Prisma } from "@prisma/client";
 
 // ============================================================================
 // HR MODULE CONTROLLER (Isolated & Expanded)
