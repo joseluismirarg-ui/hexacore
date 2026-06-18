@@ -5,6 +5,7 @@ import { prisma } from '../lib/prisma';
 interface JwtPayload {
   userId: string;
   role: string;
+  tenantId?: string;
 }
 
 export const authenticateToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -26,7 +27,7 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
       return;
     }
 
-    req.user = { id: user.id, role: user.role };
+    req.user = { id: user.id, role: user.role, tenantId: user.tenantId };
     next();
   } catch (error) {
     res.status(403).json({ success: false, message: 'Token inválido o expirado' });

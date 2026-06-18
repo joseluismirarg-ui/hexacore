@@ -26,7 +26,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     }
 
     const token = jwt.sign(
-      { userId: user.id, role: user.role },
+      { userId: user.id, role: user.role, tenantId: user.tenantId },
       process.env.JWT_SECRET || 'fallback_secret',
       { expiresIn: '12h' }
     );
@@ -93,12 +93,11 @@ export const createDemoSession = async (_req: Request, res: Response): Promise<v
     // 5. Generate JWT Token
     const token = jwt.sign(
       { 
-        id: demoUser.id, 
-        email: demoUser.email, 
+        userId: demoUser.id, 
         role: demoUser.role,
         tenantId: demoUser.tenantId
       },
-      process.env.JWT_SECRET || 'super_secret',
+      process.env.JWT_SECRET || 'fallback_secret',
       { expiresIn: '2h' }
     );
 
