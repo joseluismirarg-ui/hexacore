@@ -58,7 +58,7 @@ async function request<T>(
     throw new ApiError(
       response.status,
       json.code ?? 'UNKNOWN',
-      json.message ?? `Error HTTP ${response.status}`,
+      json.message ?? json.error ?? `Error HTTP ${response.status}`,
       json.errors
     );
   }

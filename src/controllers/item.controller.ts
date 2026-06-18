@@ -158,7 +158,14 @@ export async function eliminarProducto(
 
     await prisma.item.delete({ where: { id: req.params.id } });
     res.json({ success: true, message: 'Producto eliminado correctamente' });
-  } catch (err) {
+  } catch (err: any) {
+    if (err.code === 'P2003') {
+      res.status(400).json({ 
+        success: false, 
+        error: 'No se puede eliminar el producto porque tiene movimientos de inventario, historial o recetas asociadas.' 
+      });
+      return;
+    }
     next(err);
   }
 }
