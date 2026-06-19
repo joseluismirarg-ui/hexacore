@@ -77,6 +77,79 @@ router.put('/licenses', async (req: Request, res: Response, next: NextFunction):
   }
 });
 
+// POST /api/admin/tenants — Crear una nueva empresa (Tenant) SaaS
+router.post('/tenants', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { name, industry, plan, companyRfc, adminName, adminEmail, adminPassword } = req.body;
+
+    if (!name || !adminName || !adminEmail || !adminPassword) {
+      res.status(400).json({ success: false, message: 'Faltan campos obligatorios' });
+      return;
+    }
+
+    // 1. Validar si el email ya existe en Prisma
+    const existingUser = await prisma.user.findUnique({ where: { email: adminEmail } });
+    if (existingUser) {
+      res.status(400).json({ success: false, message: 'El correo electrónico ya está registrado.' });
+      return;
+    }
+
+    // 2. Crear el Tenant
+    const tenant = await prisma.tenant.create({
+      data: {
+        name,
+        industry: industry || 'GENERAL',
+        plan: plan || 'FREE',
+        status: 'ACTIVE',
+      }
+    });
+
+    // 3. Crear el Administrador en Supabase Auth usando SQL Directo (bypasseando service_role)
+    const supabaseAuthUser = await prisma.$queryRaw<any[]>`
+      INSERT INTO auth.users (
+        instance_id, id, aud, role, email, encrypted_password, 
+        email_confirmed_at, raw_user_meta_data, created_at, updated_at
+      ) VALUES (
+        '00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated', 'authenticated', 
+        ${adminEmail}, crypt(${adminPassword}, gen_salt('bf')), now(), 
+        ${{ name: adminName, role: 'ADMIN', tenant_id: tenant.id }}::jsonb, now(), now()
+      ) RETURNING id;
+    `;
+
+    const authUserId = supabaseAuthUser[0]?.id;
+
+    if (!authUserId) {
+      // Si falla auth.users, eliminamos el tenant para mantener consistencia
+      await prisma.tenant.delete({ where: { id: tenant.id } });
+      res.status(500).json({ success: false, message: 'Error al crear el usuario en Auth' });
+      return;
+    }
+
+    // 4. Crear la Configuración del Sistema
+    await prisma.systemConfig.create({
+      data: {
+        tenantId: tenant.id,
+        companyName: name,
+        companyRfc: companyRfc || 'XAXX010101000',
+        taxRegimen: '601', // General de Ley Personas Morales
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Empresa SaaS y Administrador creados exitosamente',
+      data: tenant
+    });
+  } catch (error: any) {
+    // Capturar errores de restricción única en auth.users si ocurren a nivel Postgres
+    if (error.message?.includes('duplicate key value')) {
+      res.status(400).json({ success: false, message: 'El correo electrónico ya existe en el sistema de Auth.' });
+      return;
+    }
+    next(error);
+  }
+});
+
 // GET /api/admin/tenants — Obtener todas las empresas (Tenants) y su configuración
 router.get('/tenants', async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {

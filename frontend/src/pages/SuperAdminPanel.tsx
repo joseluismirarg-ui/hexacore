@@ -1,20 +1,46 @@
 import React, { useState } from 'react';
 import { useAsync } from '../lib/hooks';
 import { api, formatCurrency, formatTimestamp } from '../lib/api';
+import { Plus, X } from 'lucide-react';
 
 export default function SuperAdminPanel() {
   const { data: licenseData, loading: loadingLicense, execute: reloadLicense } = useAsync(() => api.get('/api/admin/licenses'), true);
   const { data: usersData, loading: loadingUsers } = useAsync(() => api.get('/api/users'), true);
   const { data: statsData, loading: loadingStats } = useAsync(() => api.get('/api/dashboard'), true);
-  const { data: tenantsData, loading: loadingTenants } = useAsync(() => api.get('/api/admin/tenants'), true);
+  const { data: tenantsData, loading: loadingTenants, execute: reloadTenants } = useAsync(() => api.get('/api/admin/tenants'), true);
 
   const license: any = (licenseData as any)?.data || {};
   const users: any[] = (usersData as any)?.data || [];
   const stats: any = (statsData as any)?.data || {};
   const tenants: any[] = (tenantsData as any)?.data || [];
 
-  const [activeTab, setActiveTab] = useState<'licencias' | 'usuarios' | 'sistema' | 'empresas'>('licencias');
+  const [activeTab, setActiveTab] = useState<'licencias' | 'usuarios' | 'sistema' | 'empresas'>('empresas');
   const [toggling, setToggling] = useState(false);
+
+  // Estado para el Modal de Crear Empresa
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '', industry: 'GENERAL', plan: 'FREE', companyRfc: '',
+    adminName: '', adminEmail: '', adminPassword: ''
+  });
+
+  const handleCreateTenant = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await api.post('/api/admin/tenants', formData);
+      setShowCreateModal(false);
+      setFormData({ name: '', industry: 'GENERAL', plan: 'FREE', companyRfc: '', adminName: '', adminEmail: '', adminPassword: '' });
+      await reloadTenants();
+      alert('Empresa creada exitosamente');
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Error al crear la empresa');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleToggleLicense = async (key: string, currentValue: boolean) => {
     if (toggling) return;
@@ -87,6 +113,16 @@ export default function SuperAdminPanel() {
 
       {activeTab === 'empresas' && (
         <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold">Empresas (Tenants)</h2>
+            <button 
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors font-medium text-sm"
+            >
+              <Plus size={16} /> Crear Empresa SaaS
+            </button>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {tenants.map((t: any) => {
               const sysConfig = t.systemConfigs?.[0] || {};
@@ -132,6 +168,94 @@ export default function SuperAdminPanel() {
           {tenants.length === 0 && (
             <div className="p-8 text-center border-2 border-dashed rounded-xl text-muted-foreground">
               No hay empresas registradas aún.
+            </div>
+          )}
+
+          {/* Modal Crear Empresa */}
+          {showCreateModal && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-card w-full max-w-2xl rounded-xl shadow-xl flex flex-col max-h-[90vh]">
+                <div className="flex justify-between items-center p-6 border-b">
+                  <h2 className="text-xl font-bold">Registrar Nueva Empresa SaaS</h2>
+                  <button onClick={() => setShowCreateModal(false)} className="text-muted-foreground hover:text-foreground">
+                    <X size={20} />
+                  </button>
+                </div>
+                
+                <div className="p-6 overflow-y-auto">
+                  <form id="createTenantForm" onSubmit={handleCreateTenant} className="space-y-6">
+                    <div className="space-y-4">
+                      <h3 className="font-semibold text-lg flex items-center gap-2 border-b pb-2">
+                        <span className="bg-primary/10 text-primary w-6 h-6 rounded-full flex items-center justify-center text-sm">1</span>
+                        Datos de la Empresa
+                      </h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-sm font-medium">Nombre de Empresa *</label>
+                          <input required type="text" className="w-full rounded-md border bg-background px-3 py-2 text-sm" 
+                            value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-sm font-medium">RFC</label>
+                          <input type="text" className="w-full rounded-md border bg-background px-3 py-2 text-sm" 
+                            value={formData.companyRfc} onChange={e => setFormData({...formData, companyRfc: e.target.value})} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-sm font-medium">Industria</label>
+                          <select className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                            value={formData.industry} onChange={e => setFormData({...formData, industry: e.target.value})}>
+                            <option value="GENERAL">General</option>
+                            <option value="RETAIL">Retail / Tienda</option>
+                            <option value="CONSTRUCTION">Construcción</option>
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-sm font-medium">Plan</label>
+                          <select className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                            value={formData.plan} onChange={e => setFormData({...formData, plan: e.target.value})}>
+                            <option value="FREE">Gratis (Test)</option>
+                            <option value="BASIC">Básico</option>
+                            <option value="PREMIUM">Premium</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h3 className="font-semibold text-lg flex items-center gap-2 border-b pb-2">
+                        <span className="bg-primary/10 text-primary w-6 h-6 rounded-full flex items-center justify-center text-sm">2</span>
+                        Cuenta del Administrador Principal
+                      </h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1 col-span-2">
+                          <label className="text-sm font-medium">Nombre Completo *</label>
+                          <input required type="text" className="w-full rounded-md border bg-background px-3 py-2 text-sm" 
+                            value={formData.adminName} onChange={e => setFormData({...formData, adminName: e.target.value})} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-sm font-medium">Correo Electrónico (Login) *</label>
+                          <input required type="email" className="w-full rounded-md border bg-background px-3 py-2 text-sm" 
+                            value={formData.adminEmail} onChange={e => setFormData({...formData, adminEmail: e.target.value})} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-sm font-medium">Contraseña Inicial *</label>
+                          <input required type="password" minLength={6} className="w-full rounded-md border bg-background px-3 py-2 text-sm" 
+                            value={formData.adminPassword} onChange={e => setFormData({...formData, adminPassword: e.target.value})} />
+                        </div>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+                
+                <div className="p-6 border-t bg-muted/30 flex justify-end gap-3 mt-auto">
+                  <button type="button" onClick={() => setShowCreateModal(false)} className="px-4 py-2 border rounded-md hover:bg-muted font-medium text-sm">
+                    Cancelar
+                  </button>
+                  <button type="submit" form="createTenantForm" disabled={isSubmitting} className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 font-medium text-sm flex items-center gap-2">
+                    {isSubmitting ? 'Creando Empresa...' : 'Registrar Empresa'}
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
