@@ -1,5 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import { createClient } from '@supabase/supabase-js';
+
+// Inicializar cliente de Supabase para el backend usando las variables de entorno disponibles
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export const authenticateToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const authHeader = req.headers['authorization'];
@@ -11,27 +17,30 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
   }
 
   try {
-    const secret = process.env.SUPABASE_JWT_SECRET || process.env.JWT_SECRET || 'fallback_secret';
-    // Algunos secretos de Supabase vienen en Base64, otros son raw. Si termina en == probablemente es Base64
-    const isBase64 = secret.length > 40 && !secret.includes('-') && !secret.startsWith('http');
-    const verifyKey = isBase64 ? Buffer.from(secret, 'base64') : secret;
+    // Validar token de forma segura contra la API de Supabase, 
+    // lo cual soporta tanto el antiguo HS256 como el nuevo RS256 automáticamente.
+    const { data: { user }, error } = await supabase.auth.getUser(token);
 
-    const decoded = jwt.verify(token, verifyKey) as any;
+    if (error || !user) {
+      console.error('Supabase Auth Error:', error?.message);
+      res.status(403).json({ success: false, message: 'Token inválido o expirado' });
+      return;
+    }
     
     // Extraer rol y tenantId de los metadatos de Supabase
-    const role = decoded.user_metadata?.role || 'USER';
-    const tenantId = decoded.user_metadata?.tenantId || 'default-tenant';
+    const role = user.user_metadata?.role || 'USER';
+    const tenantId = user.user_metadata?.tenantId || 'default-tenant';
 
     req.user = { 
-      id: decoded.sub, // 'sub' es el ID de usuario en Supabase
+      id: user.id,
       role: role, 
       tenantId: tenantId 
     };
     
     next();
   } catch (error) {
-    console.error('JWT Verification Error:', error);
-    res.status(403).json({ success: false, message: 'Token inválido o expirado' });
+    console.error('Auth Exception:', error);
+    res.status(403).json({ success: false, message: 'Excepción de seguridad en token' });
     return;
   }
 };
