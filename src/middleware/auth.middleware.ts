@@ -11,8 +11,12 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
   }
 
   try {
-    // Supabase firma sus JWT con el JWT Secret del proyecto
-    const decoded = jwt.verify(token, process.env.SUPABASE_JWT_SECRET || process.env.JWT_SECRET || 'fallback_secret') as any;
+    const secret = process.env.SUPABASE_JWT_SECRET || process.env.JWT_SECRET || 'fallback_secret';
+    // Algunos secretos de Supabase vienen en Base64, otros son raw. Si termina en == probablemente es Base64
+    const isBase64 = secret.length > 40 && !secret.includes('-') && !secret.startsWith('http');
+    const verifyKey = isBase64 ? Buffer.from(secret, 'base64') : secret;
+
+    const decoded = jwt.verify(token, verifyKey) as any;
     
     // Extraer rol y tenantId de los metadatos de Supabase
     const role = decoded.user_metadata?.role || 'USER';
@@ -26,6 +30,7 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
     
     next();
   } catch (error) {
+    console.error('JWT Verification Error:', error);
     res.status(403).json({ success: false, message: 'Token inválido o expirado' });
     return;
   }
