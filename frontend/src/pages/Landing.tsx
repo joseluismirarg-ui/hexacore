@@ -12,7 +12,7 @@ export function Landing() {
     setIsDemoLoading(true);
     try {
       const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email: 'demo@hexacore.com',
+        email: 'demouser@hexacore.com',
         password: 'DemoHexa2026',
       });
 

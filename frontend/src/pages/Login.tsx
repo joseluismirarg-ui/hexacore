@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
 
 export function Login() {
-  const [email, setEmail] = useState('admin@hexacore.com');
+  const [email, setEmail] = useState('superadmin@hexacore.com');
   const [password, setPassword] = useState('AdminHexa2026');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -47,7 +47,7 @@ export function Login() {
     try {
       // Autenticación automática como usuario Demo Ficticio
       const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email: 'demo@hexacore.com',
+        email: 'demouser@hexacore.com',
         password: 'DemoHexa2026',
       });
 
