@@ -52,7 +52,8 @@ app.use(helmet({
       connectSrc: ["'self'", "https://*.supabase.co", "https://xlqdteghltctdorrpfdo.supabase.co"],
       imgSrc: ["'self'", "data:", "https:"],
       scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
     },
   },
 }));
