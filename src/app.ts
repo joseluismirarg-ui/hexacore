@@ -45,7 +45,17 @@ const app: Application = express();
 // =============================================================================
 // MIDDLEWARES DE SEGURIDAD Y PARSING
 // =============================================================================
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      connectSrc: ["'self'", "https://*.supabase.co", "https://xlqdteghltctdorrpfdo.supabase.co"],
+      imgSrc: ["'self'", "data:", "https:"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+    },
+  },
+}));
 
 const corsOptions: cors.CorsOptions = {
   origin:
