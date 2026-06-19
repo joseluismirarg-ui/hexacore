@@ -30,6 +30,7 @@ import LandlordDashboard from '@/pages/LandlordDashboard';
 import PasarelaSuscripcion from '@/pages/PasarelaSuscripcion';
 import AdminSupport from '@/pages/AdminSupport';
 import TruckDashboard from '@/pages/TruckDashboard';
+import MobileAppRoot from '@/pages/MobileAppRoot';
 
 // Wrapper para layout protegido
 function ProtectedLayout() {
@@ -52,6 +53,13 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/onboarding" element={<OnboardingWizard />} />
           <Route path="/suscripcion" element={<PasarelaSuscripcion />} />
+
+          {/* Ruta PWA Móvil independiente del Layout Principal */}
+          <Route path="/mobile" element={
+            <ProtectedRoute>
+              <MobileAppRoot />
+            </ProtectedRoute>
+          } />
 
           {/* Rutas Privadas del ERP */}
           <Route element={<ProtectedLayout />}>
