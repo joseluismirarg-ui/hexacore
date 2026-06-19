@@ -4,9 +4,9 @@ import { PuntoDeVenta } from './PuntoDeVenta';
 import DriverTMS from './DriverTMS';
 
 export default function MobileAppRoot() {
-  const { user, loading } = useAuth();
+  const { user, isLoading } = useAuth();
 
-  if (loading) return <div className="p-8 text-center animate-pulse text-white">Cargando Sistema...</div>;
+  if (isLoading) return <div className="p-8 text-center animate-pulse text-white">Cargando Sistema...</div>;
 
   // Segmentación Estricta
   if (user?.role === 'CHOFER') {

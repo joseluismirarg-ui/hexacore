@@ -31,7 +31,7 @@ export const useTMSStore = create<TMSState>()(
       pendingSync: [],
       loadTrip: async () => {
         try {
-          const res = await api.get('/api/driver/trips/active');
+          const res = await api.get<any>('/api/driver/trips/active');
           if (res.data?.data) {
             set({ tripId: res.data.data.id, stops: res.data.data.stops });
           }
