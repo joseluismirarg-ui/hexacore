@@ -1,24 +1,24 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma';
-import { requireAuth } from '../middleware/auth.middleware';
+import { authenticateToken } from '../middleware/auth.middleware';
 
 const router = Router();
 
 // Middleware para asegurar que el usuario es chofer
-const requireDriver = (req: Request, res: Response, next: NextFunction) => {
+const requireDriver = (req: Request, res: Response, next: NextFunction): void => {
   const role = (req as any).user?.role;
   // Permitimos ADMIN para pruebas
   if (role !== 'CHOFER' && role !== 'ADMIN') {
-    return res.status(403).json({ success: false, message: 'Acceso denegado: Se requiere rol de Chofer' });
+    res.status(403).json({ success: false, message: 'Acceso denegado: Se requiere rol de Chofer' });
+    return;
   }
   next();
 };
 
 // GET /api/driver/trips/active
 // Retorna el viaje activo del chofer autenticado, junto con stops ordenadas
-router.get('/trips/active', requireAuth, requireDriver, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.get('/trips/active', authenticateToken, requireDriver, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const userId = (req as any).user?.id;
     const tenantId = (req as any).user?.tenantId;
 
     const activeTrip = await prisma.trip.findFirst({
@@ -49,7 +49,7 @@ router.get('/trips/active', requireAuth, requireDriver, async (req: Request, res
 
 // PUT /api/driver/stops/:stopId/status
 // Actualiza el estatus de la parada
-router.put('/stops/:stopId/status', requireAuth, requireDriver, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.put('/stops/:stopId/status', authenticateToken, requireDriver, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { stopId } = req.params;
     const { status, notes, signatureUrl, photoUrl } = req.body;
