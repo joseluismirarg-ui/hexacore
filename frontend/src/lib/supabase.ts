@@ -1,10 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://dummy.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'dummy-key';
-
-if (supabaseUrl === 'https://dummy.supabase.co') {
-  console.error('⚠️ CRITICAL: Faltan variables de entorno VITE_SUPABASE_URL. La app no funcionará.');
-}
+// Las llaves de Supabase (URL y ANON KEY) son públicas por diseño.
+// Al ponerlas directamente aquí, evitamos los problemas de inyección de variables 
+// en el Docker de Railway durante el proceso de Build de Vite.
+const supabaseUrl = 'https://xlqdteghltctdorrpfdo.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhscWR0ZWdobHRjdGRvcnJwZmRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4MTcwNDQsImV4cCI6MjA5NzM5MzA0NH0.IkHt8Kp2n12ctqlG74Azu4iHY08pWzcYbYeG0NZz1no';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
