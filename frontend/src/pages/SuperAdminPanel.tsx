@@ -4,17 +4,15 @@ import { api, formatCurrency, formatTimestamp } from '../lib/api';
 import { Plus, X } from 'lucide-react';
 
 export default function SuperAdminPanel() {
-  const { data: licenseData, loading: loadingLicense, execute: reloadLicense } = useAsync(() => api.get('/api/admin/licenses'), true);
   const { data: usersData, loading: loadingUsers } = useAsync(() => api.get('/api/users'), true);
   const { data: statsData, loading: loadingStats } = useAsync(() => api.get('/api/dashboard'), true);
   const { data: tenantsData, loading: loadingTenants, execute: reloadTenants } = useAsync(() => api.get('/api/admin/tenants'), true);
 
-  const license: any = (licenseData as any)?.data || {};
   const users: any[] = (usersData as any)?.data || [];
   const stats: any = (statsData as any)?.data || {};
   const tenants: any[] = (tenantsData as any)?.data || [];
 
-  const [activeTab, setActiveTab] = useState<'licencias' | 'usuarios' | 'sistema' | 'empresas'>('empresas');
+  const [activeTab, setActiveTab] = useState<'usuarios' | 'sistema' | 'empresas'>('empresas');
   const [toggling, setToggling] = useState(false);
 
   // Estado para el Modal de Crear Empresa
@@ -24,6 +22,9 @@ export default function SuperAdminPanel() {
     name: '', industry: 'GENERAL', plan: 'FREE', companyRfc: '',
     adminName: '', adminEmail: '', adminPassword: ''
   });
+
+  // Estado para el Modal de Licencias
+  const [selectedTenantForModules, setSelectedTenantForModules] = useState<any | null>(null);
 
   const handleCreateTenant = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,12 +43,20 @@ export default function SuperAdminPanel() {
     }
   };
 
-  const handleToggleLicense = async (key: string, currentValue: boolean) => {
+  const handleToggleLicense = async (tenantId: string, key: string, currentValue: boolean) => {
     if (toggling) return;
     setToggling(true);
     try {
-      await api.put('/api/admin/licenses', { [key]: !currentValue });
-      await reloadLicense();
+      await api.put(`/api/admin/tenants/${tenantId}/licenses`, { [key]: !currentValue });
+      // Update local state to reflect change immediately without full reload
+      setSelectedTenantForModules((prev: any) => ({
+        ...prev,
+        moduleLicense: {
+          ...prev.moduleLicense,
+          [key]: !currentValue
+        }
+      }));
+      await reloadTenants(); // update background
     } catch (error) {
       alert('Error al actualizar licencia');
     } finally {
@@ -75,7 +84,7 @@ export default function SuperAdminPanel() {
 
       <div className="border-b border-border">
         <nav className="-mb-px flex space-x-8 overflow-x-auto">
-          {(['empresas', 'licencias', 'usuarios', 'sistema'] as const).map((tab) => (
+          {(['empresas', 'usuarios', 'sistema'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -85,31 +94,13 @@ export default function SuperAdminPanel() {
                   : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
               }`}
             >
-              {tab === 'empresas' ? 'Empresas SaaS' : tab === 'licencias' ? 'Módulos / Licencias' : tab === 'usuarios' ? 'Usuarios del Sistema' : 'Estado del Sistema'}
+              {tab === 'empresas' ? 'Empresas SaaS' : tab === 'usuarios' ? 'Usuarios del Sistema' : 'Estado del Sistema'}
             </button>
           ))}
         </nav>
       </div>
 
-      {activeTab === 'licencias' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {modules.map((mod) => (
-            <div key={mod.key} className={`rounded-xl border p-5 transition-all ${license[mod.key] ? 'bg-green-500/5 border-green-500/30' : 'bg-card border-border opacity-60'}`}>
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-sm">{mod.label}</h3>
-                <button
-                  onClick={() => handleToggleLicense(mod.key, license[mod.key])}
-                  disabled={toggling}
-                  className={`text-xs font-bold px-2 py-0.5 rounded-full transition-colors cursor-pointer disabled:opacity-50 ${license[mod.key] ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'}`}
-                >
-                  {license[mod.key] ? 'ACTIVO' : 'INACTIVO'}
-                </button>
-              </div>
-              <p className="text-xs text-muted-foreground">{mod.desc}</p>
-            </div>
-          ))}
-        </div>
-      )}
+
 
       {activeTab === 'empresas' && (
         <div className="space-y-4">
@@ -146,6 +137,12 @@ export default function SuperAdminPanel() {
                   </div>
 
                   <div className="mt-6 pt-4 border-t flex gap-2">
+                    <button 
+                      onClick={() => setSelectedTenantForModules(t)}
+                      className="flex-1 bg-secondary text-secondary-foreground py-2 text-sm font-medium rounded-md hover:bg-secondary/80 transition-colors"
+                    >
+                      Módulos
+                    </button>
                     <button 
                       onClick={async () => {
                         try {
@@ -253,6 +250,53 @@ export default function SuperAdminPanel() {
                   </button>
                   <button type="submit" form="createTenantForm" disabled={isSubmitting} className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 font-medium text-sm flex items-center gap-2">
                     {isSubmitting ? 'Creando Empresa...' : 'Registrar Empresa'}
+                  </button>
+                </div>
+              </div>
+            </div>
+            </div>
+          )}
+
+          {/* Modal Gestionar Módulos por Tenant */}
+          {selectedTenantForModules && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-card w-full max-w-4xl rounded-xl shadow-xl flex flex-col max-h-[90vh]">
+                <div className="flex justify-between items-center p-6 border-b">
+                  <div>
+                    <h2 className="text-xl font-bold">Gestionar Módulos de la Empresa</h2>
+                    <p className="text-sm text-muted-foreground">Configurando licencias para: <span className="font-bold text-foreground">{selectedTenantForModules.name}</span></p>
+                  </div>
+                  <button onClick={() => setSelectedTenantForModules(null)} className="text-muted-foreground hover:text-foreground">
+                    <X size={20} />
+                  </button>
+                </div>
+                
+                <div className="p-6 overflow-y-auto">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {modules.map((mod) => {
+                      const isActive = selectedTenantForModules?.moduleLicense?.[mod.key];
+                      return (
+                        <div key={mod.key} className={`rounded-xl border p-5 transition-all ${isActive ? 'bg-green-500/5 border-green-500/30' : 'bg-card border-border opacity-60'}`}>
+                          <div className="flex items-center justify-between mb-2">
+                            <h3 className="font-semibold text-sm">{mod.label}</h3>
+                            <button
+                              onClick={() => handleToggleLicense(selectedTenantForModules.id, mod.key, isActive || false)}
+                              disabled={toggling}
+                              className={`text-xs font-bold px-2 py-0.5 rounded-full transition-colors cursor-pointer disabled:opacity-50 ${isActive ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'}`}
+                            >
+                              {isActive ? 'ACTIVO' : 'INACTIVO'}
+                            </button>
+                          </div>
+                          <p className="text-xs text-muted-foreground">{mod.desc}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                
+                <div className="p-6 border-t bg-muted/30 flex justify-end gap-3 mt-auto">
+                  <button type="button" onClick={() => setSelectedTenantForModules(null)} className="px-4 py-2 border rounded-md hover:bg-muted font-medium text-sm">
+                    Cerrar
                   </button>
                 </div>
               </div>

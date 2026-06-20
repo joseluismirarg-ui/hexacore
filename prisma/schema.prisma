@@ -129,6 +129,7 @@ model Tenant {
   trucks                Truck[]
   trips                 Trip[]
   tripExpenses          TripExpense[]
+  moduleLicense         ModuleLicense?
 
   @@map("tenants")
 }
@@ -742,6 +743,8 @@ model SystemConfig {
 
 model ModuleLicense {
   id                  String   @id @default(uuid())
+  tenantId            String   @unique @map("tenant_id")
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   erpActive           Boolean  @default(true)
   posActive           Boolean  @default(true)
   hrActive            Boolean  @default(false)

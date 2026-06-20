@@ -10,13 +10,16 @@ import jwt from 'jsonwebtoken';
 const router = Router();
 
 // GET /api/admin/licenses — Obtener la configuración de licencias
-router.get('/licenses', async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.get('/licenses', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    let license = await prisma.moduleLicense.findFirst();
+    const tenantId = (req as any).user?.tenantId || 'default-tenant';
+    
+    let license = await prisma.moduleLicense.findUnique({ where: { tenantId } });
     if (!license) {
       // Auto-crear si no existe
       license = await prisma.moduleLicense.create({
         data: {
+          tenantId,
           erpActive: true,
           posActive: true,
           hrActive: false,
@@ -34,18 +37,20 @@ router.get('/licenses', async (_req: Request, res: Response, next: NextFunction)
   }
 });
 
-// PUT /api/admin/licenses — Actualizar switches de módulos
-router.put('/licenses', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+// PUT /api/admin/tenants/:id/licenses — Actualizar switches de módulos de un tenant específico
+router.put('/tenants/:id/licenses', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
+    const tenantId = req.params.id;
     const {
       erpActive, posActive, hrActive, billingActive,
       logisticsActive, manufacturingActive, treasuryActive, reportsActive,
     } = req.body;
 
-    let license = await prisma.moduleLicense.findFirst();
+    let license = await prisma.moduleLicense.findUnique({ where: { tenantId } });
     if (!license) {
       license = await prisma.moduleLicense.create({
         data: {
+          tenantId,
           erpActive: erpActive ?? true,
           posActive: posActive ?? true,
           hrActive: hrActive ?? false,
@@ -135,6 +140,15 @@ router.post('/tenants', async (req: Request, res: Response, next: NextFunction):
       }
     });
 
+    // 5. Crear la licencia de módulos por defecto para el tenant
+    await prisma.moduleLicense.create({
+      data: {
+        tenantId: tenant.id,
+        erpActive: true,
+        posActive: true,
+      }
+    });
+
     res.status(201).json({
       success: true,
       message: 'Empresa SaaS y Administrador creados exitosamente',
@@ -157,6 +171,7 @@ router.get('/tenants', async (_req: Request, res: Response, next: NextFunction):
       include: {
         systemConfigs: true, // Para obtener RFC, teléfono, dirección fiscal
         users: true, // Para contar o mostrar usuarios
+        moduleLicense: true, // Para obtener licencias
       },
       orderBy: { createdAt: 'desc' }
     });
