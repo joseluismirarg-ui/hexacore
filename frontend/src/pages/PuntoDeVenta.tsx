@@ -21,8 +21,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/Button';
-import { PageHeader } from '@/components/PageHeader';
-import { useDynamicTheme } from '@/lib/useDynamicTheme';
 import { useTenantStore } from '@/store/useTenantStore';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
