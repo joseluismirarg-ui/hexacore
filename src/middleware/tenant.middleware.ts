@@ -57,15 +57,14 @@ export const tenantMiddleware = async (req: Request, res: Response, next: NextFu
     }
 
     if (status === 'SUSPENDED') {
-      return res.status(403).json({ error: 'Cuenta Suspendida. Contacte soporte.' });
+      return res.status(403).json({ error: 'TENANT_SUSPENDED', message: 'Cuenta suspendida por falta de pago. Contacte a soporte.' });
     }
 
-    if (status === 'PAST_DUE') {
-      return res.status(402).json({ error: 'Pago Requerido.', code: 'PAYMENT_REQUIRED' });
-    }
-
-    if (expiresAt && new Date() > expiresAt && status === 'TRIAL') {
-      return res.status(402).json({ error: 'Período de prueba finalizado.', code: 'PAYMENT_REQUIRED' });
+    if (status === 'PAST_DUE' || (expiresAt && new Date() > expiresAt && status === 'TRIAL')) {
+      if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+        return res.status(403).json({ error: 'TENANT_READ_ONLY', message: 'Cuenta en mora. Acceso limitado a modo solo lectura.' });
+      }
+      // GET requests are allowed
     }
   }
 

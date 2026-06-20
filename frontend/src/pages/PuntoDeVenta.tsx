@@ -21,6 +21,9 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/Button';
+import { PageHeader } from '@/components/PageHeader';
+import { useDynamicTheme } from '@/lib/useDynamicTheme';
+import { useTenantStore } from '@/store/useTenantStore';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { formatCurrency, productosApi, clientesApi, usuariosApi, transaccionesApi, hrApi, ApiError } from '@/lib/api';
@@ -127,6 +130,7 @@ export function PuntoDeVenta() {
   const [paymentType, setPaymentType] = useState<'VENTA_DIRECTA' | 'CREDITO' | 'CONSIGNACION'>('VENTA_DIRECTA');
   const [success, setSuccess] = useState(false);
   const { user } = useAuth();
+  const { isReadOnly } = useTenantStore();
   
   // Modals y UI States
   const [paymentModal, setPaymentModal] = useState(false);
@@ -758,7 +762,7 @@ export function PuntoDeVenta() {
                     size="lg"
                     fullWidth
                     icon={DollarSign}
-                    disabled={!selectedCustomer || !selectedUser}
+                    disabled={!selectedCustomer || !selectedUser || isReadOnly}
                     onClick={() => setPaymentModal(true)}
                   >
                     Cobrar {formatCurrency(totalDisplay)}

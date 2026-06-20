@@ -41,6 +41,7 @@ import bulkImportRoutes from './routes/bulk-import.routes';
 import cxcRoutes from './routes/cxc.routes';
 import stripeRoutes from './routes/stripe.routes';
 import { StripeController } from './controllers/stripe.controller';
+import superAdminRoutes from './routes/superadmin.routes';
 
 import authRoutes from './routes/auth.routes';
 import { authenticateToken, requireSuperAdmin } from './middleware/auth.middleware';
@@ -154,6 +155,7 @@ app.use('/api/sales-orders', authenticateToken, salesOrderRoutes);
 app.use('/api/logistics', authenticateToken, logisticsRoutes);
 app.use('/api/tenants', authenticateToken, tenantRoutes);
 app.use('/api/landlord', authenticateToken, requireSuperAdmin, landlordRoutes);
+app.use('/api/v1/superadmin', authenticateToken, requireSuperAdmin, superAdminRoutes);
 app.use('/api/billing', billingRoutes); // Público por webhook
 app.use('/api/analytics', authenticateToken, analyticsRoutes);
 app.use('/api/trucks', authenticateToken, truckRoutes);

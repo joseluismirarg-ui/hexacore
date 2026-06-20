@@ -60,9 +60,22 @@ async function request<T>(
   }));
 
   if (!response.ok) {
+    const errorCode = json.code ?? json.error ?? 'UNKNOWN';
+    
+    // Intercepción Global para Tenant Limits y Mora
+    if (response.status === 403) {
+      if (errorCode === 'TENANT_READ_ONLY') {
+        const { useTenantStore } = await import('@/store/useTenantStore');
+        useTenantStore.getState().setReadOnly(true);
+      } else if (errorCode === 'TENANT_SUSPENDED') {
+        const { useTenantStore } = await import('@/store/useTenantStore');
+        useTenantStore.getState().setSuspended(true);
+      }
+    }
+
     throw new ApiError(
       response.status,
-      json.code ?? 'UNKNOWN',
+      errorCode,
       json.message ?? json.error ?? `Error HTTP ${response.status}`,
       json.errors
     );

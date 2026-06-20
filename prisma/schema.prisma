@@ -19,6 +19,7 @@ datasource db {
 // =============================================================================
 
 enum Role {
+  SUPERADMIN
   ADMIN
   VENDEDOR
   ALMACENISTA
@@ -99,6 +100,16 @@ model Tenant {
   expiresAt            DateTime?    @map("expires_at")
   createdAt            DateTime     @default(now()) @map("created_at")
 
+  // Nuevos límites y flags de SuperAdmin
+  maxUsers             Int          @default(10) @map("max_users")
+  maxBranches          Int          @default(1) @map("max_branches")
+  maxTrucks            Int          @default(3) @map("max_trucks")
+  maxStorageBytes      Int          @default(1073741824) @map("max_storage_bytes") // 1GB
+  features             Json?        @default("[]") // Ej: ["IA_OPERIA", "TMS_LOGISTICS"]
+  trialEndsAt          DateTime?    @map("trial_ends_at")
+  nextPaymentDue       DateTime?    @map("next_payment_due")
+  allowSupportAccess   Boolean      @default(false) @map("allow_support_access")
+
   users                 User[]
   tickets               Ticket[]
   customers             Customer[]
@@ -137,6 +148,9 @@ model Tenant {
   cashShifts         CashShift[]
   paymentAllocations PaymentAllocation[]
   workOrders         WorkOrder[]
+
+  superAdminAuditLogs SuperAdminAuditLog[]
+  supportTokens       SupportToken[]
 
   @@map("tenants")
 }
@@ -1218,3 +1232,38 @@ model WorkOrder {
 
   @@map("work_orders")
 }
+
+
+// =============================================================================
+// SUPERADMIN AUDIT LOG & SUPPORT TOKENS
+// =============================================================================
+
+model SuperAdminAuditLog {
+  id           String   @id @default(uuid())
+  superAdminId String   @map("super_admin_id")
+  action       String
+  metadata     Json
+  ipAddress    String?  @map("ip_address")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([superAdminId])
+  @@map("superadmin_audit_logs")
+}
+
+model SupportToken {
+  id        String   @id @default(uuid())
+  token     String   @unique // hashed
+  expiresAt DateTime @map("expires_at")
+  isActive  Boolean  @default(true) @map("is_active")
+
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@map("support_tokens")
+}
+

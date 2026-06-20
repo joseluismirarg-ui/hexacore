@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { TruckController } from '../controllers/truck.controller';
 
+import { checkTenantLimit } from '../middleware/tenantLimitsMiddleware';
+
 const router = Router();
 
 // Logistics Clients
@@ -9,7 +11,7 @@ router.post('/clients', TruckController.createClient);
 
 // Trucks
 router.get('/', TruckController.getTrucks);
-router.post('/', TruckController.createTruck);
+router.post('/', checkTenantLimit('Truck'), TruckController.createTruck);
 router.patch('/:id/status', TruckController.updateTruckStatus);
 
 // Drivers

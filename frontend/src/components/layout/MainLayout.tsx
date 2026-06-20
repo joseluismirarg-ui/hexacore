@@ -5,6 +5,7 @@ import { SupportButton } from '@/components/SupportButton';
 import { NotificationBell } from '@/components/NotificationBell';
 import { useAuth } from '@/context/AuthContext';
 import { AlertTriangle, LogOut } from 'lucide-react';
+import ReadOnlyBanner from './ReadOnlyBanner';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -41,7 +42,8 @@ export function MainLayout({ children }: MainLayoutProps) {
       <Sidebar />
 
       {/* Área de contenido principal — scrollable */}
-      <main className="flex-1 overflow-y-auto relative">
+      <main className="flex-1 overflow-y-auto relative flex flex-col">
+        <ReadOnlyBanner />
         <div className="absolute top-6 right-6 z-40">
           <NotificationBell />
         </div>
