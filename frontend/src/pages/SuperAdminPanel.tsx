@@ -118,6 +118,9 @@ export default function SuperAdminPanel() {
             {tenants.map((t: any) => {
               const sysConfig = t.systemConfigs?.[0] || {};
               const userCount = t.users?.length || 0;
+              const adminUser = t.users?.find((u: any) => u.role === 'ADMIN');
+              const adminEmail = adminUser?.email || 'N/A';
+              
               return (
                 <div key={t.id} className="rounded-xl border bg-card p-5 shadow-sm">
                   <div className="flex justify-between items-start mb-2">
@@ -132,6 +135,7 @@ export default function SuperAdminPanel() {
                   
                   <div className="space-y-2 mt-4 text-sm text-muted-foreground">
                     <div className="flex justify-between"><span className="font-medium">RFC:</span> <span>{sysConfig.companyRfc || 'N/A'}</span></div>
+                    <div className="flex justify-between"><span className="font-medium">Admin:</span> <span>{adminEmail}</span></div>
                     <div className="flex justify-between"><span className="font-medium">Usuarios:</span> <span>{userCount} cuentas</span></div>
                     <div className="flex justify-between"><span className="font-medium">Creado:</span> <span>{formatTimestamp(t.createdAt)}</span></div>
                   </div>
@@ -151,7 +155,7 @@ export default function SuperAdminPanel() {
                             localStorage.setItem('hexa_token', res.data.token);
                             window.location.href = '/dashboard';
                           }
-                        } catch(e) { alert('Error al acceder al panel'); }
+                        } catch(e) { alert('La impersonación local está deshabilitada por la seguridad estricta de Supabase. Por favor inicie sesión con el correo del administrador.'); }
                       }}
                       className="flex-1 bg-primary text-primary-foreground py-2 text-sm font-medium rounded-md hover:bg-primary/90 transition-colors"
                     >
