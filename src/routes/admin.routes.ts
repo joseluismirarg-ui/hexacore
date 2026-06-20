@@ -16,7 +16,7 @@ router.get('/licenses', async (req: Request, res: Response, next: NextFunction):
     const tenantId = (req as any).user?.tenantId || 'default-tenant';
     
     if (tenantId === 'default-tenant') {
-      return res.json({
+      res.json({
         success: true,
         data: {
           tenantId: 'default-tenant',
@@ -31,6 +31,7 @@ router.get('/licenses', async (req: Request, res: Response, next: NextFunction):
           tmsActive: true,
         }
       });
+      return;
     }
 
     let license = await prisma.moduleLicense.findUnique({ where: { tenantId } });
