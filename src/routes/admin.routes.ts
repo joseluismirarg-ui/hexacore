@@ -109,28 +109,48 @@ router.post('/tenants', async (req: Request, res: Response, next: NextFunction):
       }
     });
 
-    // 3. Crear el Administrador en Supabase Auth usando SQL Directo (bypasseando service_role)
-    const supabaseAuthUser = await prisma.$queryRaw<any[]>`
-      INSERT INTO auth.users (
-        instance_id, id, aud, role, email, encrypted_password, 
-        email_confirmed_at, raw_user_meta_data, created_at, updated_at
-      ) VALUES (
-        '00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated', 'authenticated', 
-        ${adminEmail}, crypt(${adminPassword}, gen_salt('bf')), now(), 
-        ${{ name: adminName, role: 'ADMIN', tenant_id: tenant.id }}::jsonb, now(), now()
-      ) RETURNING id;
-    `;
+    // 3. Crear el Administrador en Supabase Auth usando el API Admin
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
-    const authUserId = supabaseAuthUser[0]?.id;
-
-    if (!authUserId) {
-      // Si falla auth.users, eliminamos el tenant para mantener consistencia
+    if (!supabaseUrl || !supabaseServiceKey) {
       await prisma.tenant.delete({ where: { id: tenant.id } });
-      res.status(500).json({ success: false, message: 'Error al crear el usuario en Auth' });
+      res.status(500).json({ success: false, message: 'Falta configurar SUPABASE_SERVICE_ROLE_KEY en el servidor' });
       return;
     }
 
-    // 4. Crear la Configuración del Sistema
+    const { createClient } = require('@supabase/supabase-js');
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: adminEmail,
+      password: adminPassword,
+      email_confirm: true,
+      user_metadata: { name: adminName, role: 'ADMIN', tenantId: tenant.id }
+    });
+
+    if (authError || !authData?.user?.id) {
+      // Si falla auth.users, eliminamos el tenant para mantener consistencia
+      await prisma.tenant.delete({ where: { id: tenant.id } });
+      res.status(500).json({ success: false, message: 'Error en Supabase: ' + (authError?.message || 'Desconocido') });
+      return;
+    }
+
+    const authUserId = authData.user.id;
+
+    // 4. Crear el Usuario Localmente en Prisma
+    await prisma.user.create({
+      data: {
+        id: authUserId, // Sincronizar ID de Supabase
+        email: adminEmail,
+        name: adminName,
+        role: 'ADMIN',
+        tenantId: tenant.id,
+        isActive: true
+      }
+    });
+
+    // 5. Crear la Configuración del Sistema
     await prisma.systemConfig.create({
       data: {
         tenantId: tenant.id,
@@ -140,7 +160,7 @@ router.post('/tenants', async (req: Request, res: Response, next: NextFunction):
       }
     });
 
-    // 5. Crear la licencia de módulos por defecto para el tenant
+    // 6. Crear la licencia de módulos por defecto para el tenant
     await prisma.moduleLicense.create({
       data: {
         tenantId: tenant.id,
