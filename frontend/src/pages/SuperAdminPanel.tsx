@@ -254,7 +254,6 @@ export default function SuperAdminPanel() {
                 </div>
               </div>
             </div>
-            </div>
           )}
 
           {/* Modal Gestionar Módulos por Tenant */}
