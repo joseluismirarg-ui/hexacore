@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.authenticateToken = void 0;
+exports.requireSuperAdmin = exports.authenticateToken = void 0;
 const supabase_js_1 = require("@supabase/supabase-js");
 const ws_1 = __importDefault(require("ws"));
 // Inyectar WebSocket globalmente para que el SDK de Supabase lo encuentre en Node 20
@@ -65,4 +65,16 @@ const authenticateToken = async (req, res, next) => {
     }
 };
 exports.authenticateToken = authenticateToken;
+const requireSuperAdmin = (req, res, next) => {
+    if (!req.user) {
+        res.status(401).json({ success: false, message: 'Autenticación requerida' });
+        return;
+    }
+    if (req.user.role !== 'SUPERADMIN') {
+        res.status(403).json({ success: false, message: 'Acceso denegado: Se requieren privilegios de SUPERADMIN' });
+        return;
+    }
+    next();
+};
+exports.requireSuperAdmin = requireSuperAdmin;
 //# sourceMappingURL=auth.middleware.js.map

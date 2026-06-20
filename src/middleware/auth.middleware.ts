@@ -69,3 +69,17 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
     return;
   }
 };
+
+export const requireSuperAdmin = (req: Request, res: Response, next: NextFunction): void => {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Autenticación requerida' });
+    return;
+  }
+
+  if (req.user.role !== 'SUPERADMIN') {
+    res.status(403).json({ success: false, message: 'Acceso denegado: Se requieren privilegios de SUPERADMIN' });
+    return;
+  }
+
+  next();
+};

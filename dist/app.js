@@ -132,13 +132,13 @@ app.use('/api/subscription', auth_middleware_1.authenticateToken, subscription_r
 app.use('/api/tickets', auth_middleware_1.authenticateToken, ticket_routes_1.default);
 app.use('/api/config', auth_middleware_1.authenticateToken, config_routes_1.default);
 app.use('/api/treasury', auth_middleware_1.authenticateToken, treasury_routes_1.default);
-app.use('/api/admin', auth_middleware_1.authenticateToken, admin_routes_1.default);
+app.use('/api/admin', auth_middleware_1.authenticateToken, auth_middleware_1.requireSuperAdmin, admin_routes_1.default);
 app.use('/api/driver', driver_routes_1.default);
 app.use('/api/manufacturing', auth_middleware_1.authenticateToken, manufacturing_routes_1.default);
 app.use('/api/sales-orders', auth_middleware_1.authenticateToken, sales_order_routes_1.default);
 app.use('/api/logistics', auth_middleware_1.authenticateToken, logistics_routes_1.default);
 app.use('/api/tenants', auth_middleware_1.authenticateToken, tenant_routes_1.default);
-app.use('/api/landlord', auth_middleware_1.authenticateToken, landlord_routes_1.default);
+app.use('/api/landlord', auth_middleware_1.authenticateToken, auth_middleware_1.requireSuperAdmin, landlord_routes_1.default);
 app.use('/api/billing', billing_routes_1.default); // Público por webhook
 app.use('/api/analytics', auth_middleware_1.authenticateToken, analytics_routes_1.default);
 app.use('/api/trucks', auth_middleware_1.authenticateToken, truck_routes_1.default);

@@ -40,7 +40,7 @@ import webhookRoutes from './routes/webhook.routes';
 import bulkImportRoutes from './routes/bulk-import.routes';
 
 import authRoutes from './routes/auth.routes';
-import { authenticateToken } from './middleware/auth.middleware';
+import { authenticateToken, requireSuperAdmin } from './middleware/auth.middleware';
 
 const app: Application = express();
 
@@ -143,13 +143,13 @@ app.use('/api/subscription', authenticateToken, subscriptionRoutes);
 app.use('/api/tickets', authenticateToken, ticketRoutes);
 app.use('/api/config', authenticateToken, configRoutes);
 app.use('/api/treasury', authenticateToken, treasuryRoutes);
-app.use('/api/admin', authenticateToken, adminRoutes);
+app.use('/api/admin', authenticateToken, requireSuperAdmin, adminRoutes);
 app.use('/api/driver', driverRoutes);
 app.use('/api/manufacturing', authenticateToken, manufacturingRoutes);
 app.use('/api/sales-orders', authenticateToken, salesOrderRoutes);
 app.use('/api/logistics', authenticateToken, logisticsRoutes);
 app.use('/api/tenants', authenticateToken, tenantRoutes);
-app.use('/api/landlord', authenticateToken, landlordRoutes);
+app.use('/api/landlord', authenticateToken, requireSuperAdmin, landlordRoutes);
 app.use('/api/billing', billingRoutes); // Público por webhook
 app.use('/api/analytics', authenticateToken, analyticsRoutes);
 app.use('/api/trucks', authenticateToken, truckRoutes);

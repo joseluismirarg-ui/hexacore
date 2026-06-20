@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 import { AuthProvider } from '@/context/AuthContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { SuperAdminRoute } from '@/components/SuperAdminRoute';
 import { Landing } from '@/pages/Landing';
 import { Login } from '@/pages/Login';
 import { MainLayout } from '@/components/layout/MainLayout';
@@ -93,10 +94,10 @@ export default function App() {
             <Route path="/proveedores" element={<DirectorioProveedores />} />
             <Route path="/hr" element={<RecursosHumanos />} />
 
-            {/* ── Administración ───────────────── */}
-            <Route path="/superadmin" element={<SuperAdminPanel />} />
-            <Route path="/landlord-dashboard" element={<LandlordDashboard />} />
-            <Route path="/soporte-admin" element={<AdminSupport />} />
+            {/* ── Administración (Solo Root) ───────────────── */}
+            <Route path="/superadmin" element={<SuperAdminRoute><SuperAdminPanel /></SuperAdminRoute>} />
+            <Route path="/landlord-dashboard" element={<SuperAdminRoute><LandlordDashboard /></SuperAdminRoute>} />
+            <Route path="/soporte-admin" element={<SuperAdminRoute><AdminSupport /></SuperAdminRoute>} />
           </Route>
         </Routes>
       </BrowserRouter>
