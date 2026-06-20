@@ -46,6 +46,7 @@ exports.RegistrarTransaccionSchema = zod_1.z
         .string()
         .cuid({ message: "locationId debe ser un CUID válido" })
         .optional(),
+    forceSale: zod_1.z.boolean().optional(),
     total: zod_1.z
         .number({
         required_error: "total es requerido",

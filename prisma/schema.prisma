@@ -170,7 +170,7 @@ model User {
 model Customer {
   id          String  @id @default(cuid())
   companyName String  @map("company_name")
-  rfc         String? @unique
+  rfc         String?
   email       String?
   phone       String?
 
@@ -191,6 +191,7 @@ model Customer {
   invoices           Invoice[]
   RouteVisit         RouteVisit[]
 
+  @@unique([tenantId, rfc])
   @@map("customers")
 }
 
@@ -454,6 +455,9 @@ model Payment {
   method PaymentMethod
   date   DateTime      @default(now())
   notes  String?
+  
+  requires_rep Boolean @default(false) @map("requires_rep")
+  rep_uuid     String? @map("rep_uuid")
 
   customerId String   @map("customer_id")
   customer   Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
@@ -551,6 +555,8 @@ model Invoice {
   rfc_receptor   String        @map("rfc_receptor")
   regimen_fiscal String        @map("regimen_fiscal")
   uso_cfdi       String        @map("uso_cfdi")
+  forma_pago     String        @default("99") @map("forma_pago")
+  metodo_pago    String        @default("PPD") @map("metodo_pago")
   status         InvoiceStatus @default(TIMBRADA)
   pdfUrl         String?       @map("pdf_url")
   xmlUrl         String?       @map("xml_url")

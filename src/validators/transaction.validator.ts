@@ -46,6 +46,7 @@ export const RegistrarTransaccionSchema = z
       .string()
       .cuid({ message: "locationId debe ser un CUID válido" })
       .optional(),
+    forceSale: z.boolean().optional(),
     total: z
       .number({
         required_error: "total es requerido",

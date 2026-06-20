@@ -4,6 +4,7 @@ export declare const RegistrarTransaccionSchema: z.ZodObject<{
     customerId: z.ZodString;
     userId: z.ZodString;
     locationId: z.ZodOptional<z.ZodString>;
+    forceSale: z.ZodOptional<z.ZodBoolean>;
     total: z.ZodNumber;
     items: z.ZodArray<z.ZodObject<{
         itemId: z.ZodString;
@@ -29,6 +30,7 @@ export declare const RegistrarTransaccionSchema: z.ZodObject<{
     userId: string;
     total: number;
     locationId?: string | undefined;
+    forceSale?: boolean | undefined;
 }, {
     items: {
         itemId: string;
@@ -40,6 +42,7 @@ export declare const RegistrarTransaccionSchema: z.ZodObject<{
     userId: string;
     total: number;
     locationId?: string | undefined;
+    forceSale?: boolean | undefined;
 }>;
 export type RegistrarTransaccionDTO = z.infer<typeof RegistrarTransaccionSchema>;
 //# sourceMappingURL=transaction.validator.d.ts.map

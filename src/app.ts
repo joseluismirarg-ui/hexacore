@@ -38,6 +38,7 @@ import { tenantMiddleware } from './middleware/tenant.middleware';
 import { setupSwagger } from './docs/swagger';
 import webhookRoutes from './routes/webhook.routes';
 import bulkImportRoutes from './routes/bulk-import.routes';
+import cxcRoutes from './routes/cxc.routes';
 
 import authRoutes from './routes/auth.routes';
 import { authenticateToken, requireSuperAdmin } from './middleware/auth.middleware';
@@ -154,6 +155,7 @@ app.use('/api/billing', billingRoutes); // Público por webhook
 app.use('/api/analytics', authenticateToken, analyticsRoutes);
 app.use('/api/trucks', authenticateToken, truckRoutes);
 app.use('/api/bulk-import', authenticateToken, bulkImportRoutes);
+app.use('/api/cxc', authenticateToken, cxcRoutes);
 
 // Servir siempre el frontend compilado (ignorar NODE_ENV para evitar 404s en Railway)
   app.use(express.static(path.join(__dirname, '../frontend/dist')));

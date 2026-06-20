@@ -14,7 +14,7 @@ import { DirectorioClientes } from '@/pages/DirectorioClientes';
 import { DirectorioVendedores } from '@/pages/DirectorioVendedores';
 import { PuntoDeVenta } from '@/pages/PuntoDeVenta';
 import { LogisticaKardex } from '@/pages/LogisticaKardex';
-import { CuentasPorCobrar } from '@/pages/CuentasPorCobrar';
+import CxcDashboard from '@/pages/CxcDashboard';
 import { CuentasPorPagar } from '@/pages/CuentasPorPagar';
 import { FacturacionCFDI } from '@/pages/FacturacionCFDI';
 import GestionAlmacenes from '@/pages/GestionAlmacenes';
@@ -76,7 +76,7 @@ export default function App() {
             <Route path="/facturacion" element={<FacturacionCFDI />} />
 
             {/* ── Finanzas ───────────────────── */}
-            <Route path="/cxc" element={<CuentasPorCobrar />} />
+            <Route path="/cxc" element={<CxcDashboard />} />
             <Route path="/cxp" element={<CuentasPorPagar />} />
             <Route path="/tesoreria" element={<Tesoreria />} />
 

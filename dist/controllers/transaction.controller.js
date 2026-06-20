@@ -60,7 +60,7 @@ async function registrarTransaccion(req, res, next) {
         }
         // ── [D5] Validación de límite de crédito ─────────────────────────────────
         // Solo aplica para CREDITO y CONSIGNACION (VENTA_DIRECTA es pago inmediato).
-        if (dto.tipo === "CREDITO" || dto.tipo === "CONSIGNACION") {
+        if ((dto.tipo === "CREDITO" || dto.tipo === "CONSIGNACION") && !dto.forceSale) {
             const saldoDisponible = customer.creditLimit
                 .sub(customer.currentDebt)
                 .toDecimalPlaces(2);
@@ -70,22 +70,23 @@ async function registrarTransaccion(req, res, next) {
                     `Disponible: $${saldoDisponible.toFixed(2)}, ` +
                     `Requerido: $${totalRequerido.toFixed(2)}`, "CREDITO_INSUFICIENTE");
             }
-            // Bloqueo por antigüedad de deuda (> 30 días)
+            // Bloqueo por antigüedad de deuda (> creditDays o 30 días default)
             if (customer.currentDebt.greaterThan(0)) {
-                const treintaDiasAtras = new Date();
-                treintaDiasAtras.setDate(treintaDiasAtras.getDate() - 30);
-                const salesLast30Days = await prisma_1.prisma.transaction.aggregate({
+                const diasCredito = customer.creditDays > 0 ? customer.creditDays : 30;
+                const diasAtras = new Date();
+                diasAtras.setDate(diasAtras.getDate() - diasCredito);
+                const salesPastLimit = await prisma_1.prisma.transaction.aggregate({
                     where: {
                         customerId: customer.id,
                         tipo: { in: ["CREDITO", "CONSIGNACION"] },
-                        createdAt: { gte: treintaDiasAtras }
+                        createdAt: { gte: diasAtras }
                     },
                     _sum: { total: true }
                 });
-                const sumSales = salesLast30Days._sum.total || new client_1.Prisma.Decimal(0);
+                const sumSales = salesPastLimit._sum.total || new client_1.Prisma.Decimal(0);
                 if (customer.currentDebt.greaterThan(sumSales)) {
                     const overdueAmount = customer.currentDebt.sub(sumSales);
-                    throw new errors_1.UnprocessableEntityError(`Bloqueo por morosidad. El cliente tiene un saldo vencido a más de 30 días por aprox. $${overdueAmount.toFixed(2)}. Favor de liquidar antes de emitir nuevo crédito.`, "CUENTA_BLOQUEADA_MOROSIDAD");
+                    throw new errors_1.UnprocessableEntityError(`Bloqueo por morosidad. El cliente tiene un saldo vencido a más de ${diasCredito} días por aprox. $${overdueAmount.toFixed(2)}. Favor de liquidar antes de emitir nuevo crédito.`, "CUENTA_BLOQUEADA_MOROSIDAD");
                 }
             }
         }

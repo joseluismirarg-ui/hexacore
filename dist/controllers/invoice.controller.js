@@ -9,6 +9,7 @@ exports.timbrarFactura = timbrarFactura;
 exports.listarFacturas = listarFacturas;
 exports.cancelarFactura = cancelarFactura;
 exports.facturacionMasiva = facturacionMasiva;
+exports.stampRep = stampRep;
 const crypto_1 = require("crypto");
 const prisma_1 = require("../lib/prisma");
 const invoice_validator_1 = require("../validators/invoice.validator");
@@ -67,11 +68,14 @@ async function timbrarFactura(req, res, next) {
                 rfc_receptor: dto.rfc_receptor,
                 regimen_fiscal: dto.regimen_fiscal,
                 uso_cfdi: dto.uso_cfdi,
+                forma_pago: dto.forma_pago,
+                metodo_pago: dto.metodo_pago,
                 status: 'TIMBRADA',
                 pdfUrl,
                 xmlUrl,
                 transactionId: dto.transactionId,
                 customerId: dto.customerId,
+                tenantId: transaction.tenantId,
             },
         });
         res.status(201).json({
@@ -221,6 +225,37 @@ async function facturacionMasiva(req, res, next) {
     }
     catch (err) {
         next(err);
+    }
+}
+// =============================================================================
+// POST /api/v1/facturas/rep
+// Simula el timbrado de un Complemento de Pago (REP)
+// =============================================================================
+async function stampRep(req, res, next) {
+    try {
+        const tenantId = req.user?.tenantId || "default-tenant"; // o usar tenantContext.getStore() si está disponible
+        const { paymentId } = req.body;
+        if (!paymentId)
+            throw new errors_1.UnprocessableEntityError("paymentId es requerido", "BAD_REQUEST");
+        const payment = await prisma_1.prisma.payment.findUnique({
+            where: { id: paymentId, tenantId }
+        });
+        if (!payment)
+            throw new errors_1.NotFoundError("Pago no encontrado");
+        if (!payment.requires_rep)
+            throw new errors_1.UnprocessableEntityError("Este pago no requiere REP", "REP_NOT_REQUIRED");
+        if (payment.rep_uuid)
+            throw new errors_1.UnprocessableEntityError("El REP ya fue emitido", "ALREADY_STAMPED");
+        // SIMULADOR DE PAC (REP):
+        const fakeRepUuid = (0, crypto_1.randomUUID)().toUpperCase();
+        const updatedPayment = await prisma_1.prisma.payment.update({
+            where: { id: payment.id },
+            data: { rep_uuid: fakeRepUuid }
+        });
+        res.status(200).json({ success: true, data: updatedPayment, message: "Complemento de Pago (REP) timbrado exitosamente (Mock)" });
+    }
+    catch (error) {
+        next(error);
     }
 }
 //# sourceMappingURL=invoice.controller.js.map

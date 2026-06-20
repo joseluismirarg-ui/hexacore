@@ -29,13 +29,12 @@ export const TimbrarFacturaSchema = z.object({
     }),
   regimen_fiscal: z
     .string({ required_error: 'regimen_fiscal es requerido' })
-    .trim()
-    .min(3, 'regimen_fiscal debe ser un código de 3 dígitos como "601" o "612"'),
+    .regex(/^\d{3}$/, { message: 'regimen_fiscal debe ser un código de 3 dígitos (Ej: 601)' }),
   uso_cfdi: z.enum(USOS_CFDI, {
-    errorMap: () => ({
-      message: `uso_cfdi debe ser uno de: ${USOS_CFDI.join(', ')}`,
-    }),
+    errorMap: () => ({ message: 'uso_cfdi no es válido' }),
   }),
+  forma_pago: z.string().optional().default("99"),
+  metodo_pago: z.string().optional().default("PPD"),
 });
 
 export type TimbrarFacturaDTO = z.infer<typeof TimbrarFacturaSchema>;

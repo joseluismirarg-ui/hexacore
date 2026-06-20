@@ -3,4 +3,5 @@ export declare function timbrarFactura(req: Request, res: Response, next: NextFu
 export declare function listarFacturas(req: Request, res: Response, next: NextFunction): Promise<void>;
 export declare function cancelarFactura(req: Request, res: Response, next: NextFunction): Promise<void>;
 export declare function facturacionMasiva(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function stampRep(req: Request, res: Response, next: NextFunction): Promise<void>;
 //# sourceMappingURL=invoice.controller.d.ts.map
