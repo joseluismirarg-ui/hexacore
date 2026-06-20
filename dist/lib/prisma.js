@@ -6,6 +6,7 @@ const tenant_middleware_1 = require("../middleware/tenant.middleware");
 const tenantModels = new Set(client_1.Prisma.dmmf.datamodel.models
     .filter(m => m.fields.some(f => f.name === 'tenantId'))
     .map(m => m.name));
+const softDeleteModels = new Set(['Transaction', 'Customer', 'Item', 'Invoice']);
 const globalForPrisma = globalThis;
 function createPrismaClient() {
     const basePrisma = new client_1.PrismaClient({
@@ -13,36 +14,52 @@ function createPrismaClient() {
             ? ["query", "error", "warn"]
             : ["error"],
     });
-    // Client extension for automatic tenant injection
+    // Client extension for automatic tenant injection and Soft Deletes
     return basePrisma.$extends({
         query: {
             $allModels: {
                 async $allOperations({ model, operation, args, query }) {
-                    // Si el modelo no tiene tenantId (ej. SystemConfig si decidieramos no tenerlo, aunque lo pusimos)
-                    // Asumimos que todos los modelos principales lo tienen, pero Prisma v5 nos permite inyectarlo dinámicamente
                     const tenantId = tenant_middleware_1.tenantContext.getStore();
-                    if (tenantId) {
-                        // Exclude models that don't have tenantId in their schema
-                        if (tenantModels.has(model)) {
-                            if (operation === 'findUnique' || operation === 'findFirst' || operation === 'findMany' || operation === 'update' || operation === 'updateMany' || operation === 'delete' || operation === 'deleteMany') {
-                                args.where = { tenantId, ...args.where };
+                    const isTenantModel = tenantModels.has(model);
+                    const isSoftDeleteModel = softDeleteModels.has(model);
+                    // 1. Soft Deletes Logic
+                    if (isSoftDeleteModel) {
+                        if (operation === 'findUnique' || operation === 'findFirst' || operation === 'findMany') {
+                            args.where = { deletedAt: null, ...args.where };
+                        }
+                        else if (operation === 'delete') {
+                            return basePrisma[model].update({
+                                where: args.where,
+                                data: { deletedAt: new Date() },
+                            });
+                        }
+                        else if (operation === 'deleteMany') {
+                            return basePrisma[model].updateMany({
+                                where: args.where,
+                                data: { deletedAt: new Date() },
+                            });
+                        }
+                    }
+                    // 2. Tenant Injection Logic
+                    if (tenantId && isTenantModel) {
+                        if (operation === 'findUnique' || operation === 'findFirst' || operation === 'findMany' || operation === 'update' || operation === 'updateMany' || operation === 'delete' || operation === 'deleteMany') {
+                            args.where = { tenantId, ...args.where };
+                        }
+                        else if (operation === 'create') {
+                            args.data = { tenantId, ...args.data };
+                        }
+                        else if (operation === 'createMany') {
+                            if (Array.isArray(args.data)) {
+                                args.data = args.data.map((d) => ({ tenantId, ...d }));
                             }
-                            else if (operation === 'create') {
+                            else {
                                 args.data = { tenantId, ...args.data };
                             }
-                            else if (operation === 'createMany') {
-                                if (Array.isArray(args.data)) {
-                                    args.data = args.data.map((d) => ({ tenantId, ...d }));
-                                }
-                                else {
-                                    args.data = { tenantId, ...args.data };
-                                }
-                            }
-                            else if (operation === 'upsert') {
-                                args.where = { tenantId, ...args.where };
-                                args.create = { tenantId, ...args.create };
-                                args.update = { tenantId, ...args.update };
-                            }
+                        }
+                        else if (operation === 'upsert') {
+                            args.where = { tenantId, ...args.where };
+                            args.create = { tenantId, ...args.create };
+                            args.update = { tenantId, ...args.update };
                         }
                     }
                     return query(args);

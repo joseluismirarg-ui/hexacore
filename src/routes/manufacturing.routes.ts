@@ -8,6 +8,10 @@ const router = Router();
 
 router.get('/bom', ManufacturingController.getBOMs);
 router.post('/bom', ManufacturingController.createBOM);
-router.post('/production-order', ManufacturingController.processProductionOrder);
+
+router.get('/work-orders', ManufacturingController.getWorkOrders);
+router.post('/work-orders', ManufacturingController.createWorkOrder);
+router.post('/work-orders/start', ManufacturingController.startWorkOrder);
+router.post('/work-orders/complete', ManufacturingController.completeWorkOrder);
 
 export default router;

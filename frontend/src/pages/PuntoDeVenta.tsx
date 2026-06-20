@@ -361,9 +361,11 @@ export function PuntoDeVenta() {
   const totalDisplay = centsToString(totalDisplayCents);
   const totalDisplayNumber = totalDisplayCents / 100; // Para formatCurrency si requiere número
 
+  const [needsAuthorization, setNeedsAuthorization] = useState(false);
+  const [authPolling, setAuthPolling] = useState(false);
+
   // ── Submit ────────────────────────────────────────────────────────────────
-  const handleCobrar = async () => {
-    // ... logic remains
+  const handleCobrar = async (forceBypass: boolean = false) => {
     if (submittingRef.current) return;
     if (!selectedCustomer || !selectedUser || cart.length === 0) return;
 
@@ -394,16 +396,51 @@ export function PuntoDeVenta() {
         userId: selectedUser.id,
         total: totalDisplayNumber,
         items,
+        forceSale: forceBypass
       });
 
       setSuccess(true);
       setCart([]);
       setPaymentModal(false);
-    } catch (err) {
+      setNeedsAuthorization(false);
+      setAuthPolling(false);
+    } catch (err: any) {
+      const isCreditError = err?.code === 'CREDITO_INSUFICIENTE' || err?.code === 'CUENTA_BLOQUEADA_MOROSIDAD';
       setSubmitError(err instanceof ApiError ? err.message : 'Error al procesar venta');
+      if (isCreditError) {
+        setNeedsAuthorization(true);
+      }
     } finally {
       setSubmitting(false);
       submittingRef.current = false;
+    }
+  };
+
+  const handleSolicitarAutorizacion = async () => {
+    try {
+      setSubmitting(true);
+      const items = cart.map((i) => ({ itemId: i.product.id, cantidad: i.cantidad, precioAplicado: Number(i.product.price) }));
+      
+      // Enviamos el webhook de solicitud
+      await transaccionesApi.solicitarAutorizacion({
+        tipo: paymentType,
+        customerId: selectedCustomer?.id,
+        userId: selectedUser?.id,
+        total: totalDisplayNumber,
+        items
+      });
+
+      setAuthPolling(true);
+
+      // Simulación de respuesta Webhook (en prod sería un websocket)
+      setTimeout(() => {
+        // Asumimos que el gerente aprobó
+        handleCobrar(true);
+      }, 5000);
+
+    } catch (err: any) {
+      setSubmitError(err instanceof ApiError ? err.message : 'Error al solicitar autorización');
+      setSubmitting(false);
     }
   };
 
@@ -432,6 +469,8 @@ export function PuntoDeVenta() {
     setSelectedCustomer(null);
     setCart([]);
     setSearch('');
+    setNeedsAuthorization(false);
+    setAuthPolling(false);
     searchRef.current?.focus();
   };
 
@@ -739,10 +778,22 @@ export function PuntoDeVenta() {
       {/* ── Modal de método de pago ──────────────────────────────────── */}
       {paymentModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-xl border border-gray-700/50 bg-hc-surface p-6 shadow-2xl">
+          <div className="w-full max-w-sm rounded-xl border border-gray-700/50 bg-hc-surface p-6 shadow-2xl relative overflow-hidden">
+            
+            {/* Loading Overlay for Auth Polling */}
+            {authPolling && (
+              <div className="absolute inset-0 z-10 bg-hc-surface/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
+                <Loader2 className="w-12 h-12 text-amber-500 animate-spin mb-4" />
+                <h3 className="text-lg font-bold text-gray-100 mb-2">Esperando Autorización...</h3>
+                <p className="text-sm text-gray-400">
+                  Se ha enviado un Webhook a WhatsApp/Telegram del gerente. La pantalla se desbloqueará automáticamente.
+                </p>
+              </div>
+            )}
+
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-semibold text-gray-100">Método de Pago</h2>
-              <button onClick={() => setPaymentModal(false)} className="text-gray-400 hover:text-gray-200">
+              <button onClick={() => setPaymentModal(false)} className="text-gray-400 hover:text-gray-200" disabled={authPolling}>
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -750,11 +801,12 @@ export function PuntoDeVenta() {
             <div className="space-y-3 mb-5">
               <button
                 onClick={() => setPaymentType('VENTA_DIRECTA')}
+                disabled={needsAuthorization}
                 className={`flex w-full items-center gap-4 rounded-xl border p-4 text-left transition-all ${
                   paymentType === 'VENTA_DIRECTA'
                     ? 'border-hc-emerald/50 bg-hc-emerald/10'
                     : 'border-gray-700/40 bg-hc-surface-dark hover:border-gray-600'
-                }`}
+                } ${needsAuthorization ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <DollarSign className={`h-5 w-5 ${paymentType === 'VENTA_DIRECTA' ? 'text-hc-emerald' : 'text-gray-500'}`} />
                 <div>
@@ -765,11 +817,12 @@ export function PuntoDeVenta() {
 
               <button
                 onClick={() => setPaymentType('CREDITO')}
+                disabled={needsAuthorization}
                 className={`flex w-full items-center gap-4 rounded-xl border p-4 text-left transition-all ${
                   paymentType === 'CREDITO'
                     ? 'border-hc-cobalt/50 bg-hc-cobalt/10'
                     : 'border-gray-700/40 bg-hc-surface-dark hover:border-gray-600'
-                }`}
+                } ${needsAuthorization ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <CreditCard className={`h-5 w-5 ${paymentType === 'CREDITO' ? 'text-hc-cobalt-light' : 'text-gray-500'}`} />
                 <div>
@@ -786,19 +839,42 @@ export function PuntoDeVenta() {
               </span>
             </div>
 
+            {needsAuthorization && (
+              <div className="mb-5 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex gap-3 items-start">
+                <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-bold text-amber-500">Límite o plazo excedido</p>
+                  <p className="text-xs text-gray-400 mt-1">{submitError}</p>
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-3">
-              <Button variant="ghost" size="md" fullWidth onClick={() => setPaymentModal(false)}>
+              <Button variant="ghost" size="md" fullWidth onClick={() => setPaymentModal(false)} disabled={submitting || authPolling}>
                 Cancelar
               </Button>
-              <Button
-                variant="primary"
-                size="md"
-                fullWidth
-                loading={submitting}
-                onClick={handleCobrar}
-              >
-                Confirmar venta
-              </Button>
+              {needsAuthorization ? (
+                <Button
+                  variant="primary"
+                  size="md"
+                  fullWidth
+                  className="!bg-amber-500 hover:!bg-amber-600 !text-black font-bold border-none"
+                  loading={submitting}
+                  onClick={handleSolicitarAutorizacion}
+                >
+                  Solicitar Autorización
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  size="md"
+                  fullWidth
+                  loading={submitting}
+                  onClick={() => handleCobrar(false)}
+                >
+                  Confirmar venta
+                </Button>
+              )}
             </div>
           </div>
         </div>

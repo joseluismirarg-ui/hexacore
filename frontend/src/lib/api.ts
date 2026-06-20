@@ -149,6 +149,7 @@ export const clientesApi = {
 export const transaccionesApi = {
   registrar: (body: unknown) => api.post('/api/transactions/registrar', body),
   listar: (params?: string) => api.get(`/api/transactions${params ? `?${params}` : ''}`),
+  solicitarAutorizacion: (body: unknown) => api.post('/api/transactions/solicitar-autorizacion', body),
 };
 
 // Inventario / Kardex
@@ -236,4 +237,9 @@ export const hrApi = {
 export const configApi = {
   get: () => api.get('/api/config'),
   update: (body: unknown) => api.put('/api/config', body),
+};
+
+// Suscripciones (Stripe)
+export const subscriptionApi = {
+  createCheckoutSession: (body: unknown) => api.post<{ url: string, sessionId: string }>('/api/stripe/create-checkout-session', body),
 };

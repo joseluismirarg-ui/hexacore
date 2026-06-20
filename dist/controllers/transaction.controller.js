@@ -11,13 +11,19 @@
 // [D5] currentDebt inicializado en código, no en BD.
 // =============================================================================
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.wsEmitter = void 0;
 exports.registrarTransaccion = registrarTransaccion;
 exports.getTransaccion = getTransaccion;
 exports.listarTransacciones = listarTransacciones;
+exports.solicitarAutorizacion = solicitarAutorizacion;
+exports.webhookWhatsAppAutorizacion = webhookWhatsAppAutorizacion;
 const client_1 = require("@prisma/client");
 const prisma_1 = require("../lib/prisma");
 const transaction_validator_1 = require("../validators/transaction.validator");
 const errors_1 = require("../lib/errors");
+// WebSocket import (mock/placeholder to simulate WS event emission)
+const events_1 = require("events");
+exports.wsEmitter = new events_1.EventEmitter();
 // =============================================================================
 // POST /api/v1/transacciones/registrar
 // =============================================================================
@@ -318,6 +324,69 @@ async function listarTransacciones(req, res, next) {
     }
     catch (err) {
         next(err);
+    }
+}
+// =============================================================================
+// POST /api/v1/transacciones/solicitar-autorizacion
+// =============================================================================
+async function solicitarAutorizacion(req, res, next) {
+    try {
+        const dto = transaction_validator_1.RegistrarTransaccionSchema.parse(req.body);
+        // Aquí el backend simularía un request HTTP a la API de WhatsApp/Telegram
+        // Ej: axios.post('https://api.whatsapp.com/v1/messages', { to: 'GERENTE', template: 'auth_pos' })
+        // Guardamos un intento temporal o simplemente lo dejamos en memoria
+        // Para simplificar, generamos un authRequestToken y lo retornamos.
+        const authRequestToken = `AUTH-${Date.now()}`;
+        // Registrar en AuditLog el intento de bypass
+        await prisma_1.prisma.auditLog.create({
+            data: {
+                accion: "SOLICITUD_AUTORIZACION_POS",
+                detalles: {
+                    token: authRequestToken,
+                    customer: dto.customerId,
+                    total: dto.total,
+                    user: dto.userId
+                }
+            }
+        });
+        res.status(200).json({
+            success: true,
+            message: "Solicitud enviada al gerente vía WhatsApp.",
+            data: { authRequestToken }
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+}
+// =============================================================================
+// POST /api/v1/transacciones/webhook-whatsapp
+// =============================================================================
+async function webhookWhatsAppAutorizacion(req, res, next) {
+    try {
+        // Payload que enviaría WhatsApp al interactuar con el botón
+        const { authRequestToken, status, originalPayload } = req.body;
+        if (status === 'APPROVED') {
+            // Como esto es un Webhook, no estamos en el req del cajero original.
+            // Se ejecutaría la transacción con forceSale: true, usando el originalPayload
+            // Sin embargo, una arquitectura más robusta emitiría el evento WS para que la caja 
+            // retome el flujo original ya desbloqueada.
+            exports.wsEmitter.emit(`auth_response_${authRequestToken}`, { status: 'APPROVED' });
+            await prisma_1.prisma.auditLog.create({
+                data: {
+                    accion: "AUTORIZACION_POS_APROBADA",
+                    detalles: { token: authRequestToken }
+                }
+            });
+            res.status(200).send("OK - Approved");
+        }
+        else {
+            exports.wsEmitter.emit(`auth_response_${authRequestToken}`, { status: 'REJECTED' });
+            res.status(200).send("OK - Rejected");
+        }
+    }
+    catch (error) {
+        next(error);
     }
 }
 //# sourceMappingURL=transaction.controller.js.map

@@ -177,4 +177,68 @@ export class ManufacturingController {
       res.status(400).json({ error: error.message || 'Error en la orden de producción' }); 
     }
   }
+
+  static async getWorkOrders(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const tenantId = tenantContext.getStore() || (req as any).user?.tenantId;
+      const orders = await prisma.workOrder.findMany({
+        where: { tenantId },
+        include: { bom: { include: { item: true } } }
+      });
+      res.json({ success: true, data: orders });
+    } catch (err) { next(err); }
+  }
+
+  static async createWorkOrder(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const tenantId = tenantContext.getStore() || (req as any).user?.tenantId;
+      const { quantity, bomId } = req.body;
+      
+      const order = await prisma.workOrder.create({
+        data: {
+          quantity: Number(quantity),
+          bomId,
+          tenantId,
+          status: 'PENDING'
+        }
+      });
+      res.status(201).json({ success: true, data: order });
+    } catch (err) { next(err); }
+  }
+
+  static async startWorkOrder(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const tenantId = tenantContext.getStore() || (req as any).user?.tenantId;
+
+      const order = await prisma.workOrder.updateMany({
+        where: { id, tenantId, status: 'PENDING' },
+        data: { status: 'IN_PROGRESS', startedAt: new Date() }
+      });
+      
+      if (order.count === 0) {
+        res.status(400).json({ error: 'No se pudo iniciar la orden.' });
+        return;
+      }
+      res.json({ success: true });
+    } catch (err) { next(err); }
+  }
+
+  static async completeWorkOrder(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const tenantId = tenantContext.getStore() || (req as any).user?.tenantId;
+
+      const order = await prisma.workOrder.updateMany({
+        where: { id, tenantId, status: 'IN_PROGRESS' },
+        data: { status: 'COMPLETED', completedAt: new Date() }
+      });
+
+      if (order.count === 0) {
+        res.status(400).json({ error: 'No se pudo completar la orden.' });
+        return;
+      }
+      res.json({ success: true });
+    } catch (err) { next(err); }
+  }
 }

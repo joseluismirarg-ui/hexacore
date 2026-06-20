@@ -7,6 +7,8 @@ const tenantModels = new Set(
     .map(m => m.name)
 );
 
+const softDeleteModels = new Set(['Transaction', 'Customer', 'Item', 'Invoice']);
+
 const globalForPrisma = globalThis as unknown as {
   prisma: ReturnType<typeof createPrismaClient> | undefined;
 };
@@ -19,35 +21,51 @@ function createPrismaClient() {
         : ["error"],
   });
 
-  // Client extension for automatic tenant injection
+  // Client extension for automatic tenant injection and Soft Deletes
   return basePrisma.$extends({
     query: {
       $allModels: {
         async $allOperations({ model, operation, args, query }) {
-          // Si el modelo no tiene tenantId (ej. SystemConfig si decidieramos no tenerlo, aunque lo pusimos)
-          // Asumimos que todos los modelos principales lo tienen, pero Prisma v5 nos permite inyectarlo dinámicamente
           const tenantId = tenantContext.getStore();
+          const isTenantModel = tenantModels.has(model as string);
+          const isSoftDeleteModel = softDeleteModels.has(model as string);
 
-          if (tenantId) {
-            // Exclude models that don't have tenantId in their schema
-            if (tenantModels.has(model as string)) {
-              if (operation === 'findUnique' || operation === 'findFirst' || operation === 'findMany' || operation === 'update' || operation === 'updateMany' || operation === 'delete' || operation === 'deleteMany') {
-                (args as any).where = { tenantId, ...(args as any).where };
-              } else if (operation === 'create') {
-                (args as any).data = { tenantId, ...(args as any).data };
-              } else if (operation === 'createMany') {
-                if (Array.isArray((args as any).data)) {
-                  (args as any).data = (args as any).data.map((d: any) => ({ tenantId, ...d }));
-                } else {
-                  (args as any).data = { tenantId, ...(args as any).data };
-                }
-              } else if (operation === 'upsert') {
-                (args as any).where = { tenantId, ...(args as any).where };
-                (args as any).create = { tenantId, ...(args as any).create };
-                (args as any).update = { tenantId, ...(args as any).update };
-              }
+          // 1. Soft Deletes Logic
+          if (isSoftDeleteModel) {
+            if (operation === 'findUnique' || operation === 'findFirst' || operation === 'findMany') {
+              (args as any).where = { deletedAt: null, ...(args as any).where };
+            } else if (operation === 'delete') {
+              return (basePrisma as any)[model].update({
+                where: (args as any).where,
+                data: { deletedAt: new Date() },
+              });
+            } else if (operation === 'deleteMany') {
+              return (basePrisma as any)[model].updateMany({
+                where: (args as any).where,
+                data: { deletedAt: new Date() },
+              });
             }
           }
+
+          // 2. Tenant Injection Logic
+          if (tenantId && isTenantModel) {
+            if (operation === 'findUnique' || operation === 'findFirst' || operation === 'findMany' || operation === 'update' || operation === 'updateMany' || operation === 'delete' || operation === 'deleteMany') {
+              (args as any).where = { tenantId, ...(args as any).where };
+            } else if (operation === 'create') {
+              (args as any).data = { tenantId, ...(args as any).data };
+            } else if (operation === 'createMany') {
+              if (Array.isArray((args as any).data)) {
+                (args as any).data = (args as any).data.map((d: any) => ({ tenantId, ...d }));
+              } else {
+                (args as any).data = { tenantId, ...(args as any).data };
+              }
+            } else if (operation === 'upsert') {
+              (args as any).where = { tenantId, ...(args as any).where };
+              (args as any).create = { tenantId, ...(args as any).create };
+              (args as any).update = { tenantId, ...(args as any).update };
+            }
+          }
+
           return query(args);
         },
       },

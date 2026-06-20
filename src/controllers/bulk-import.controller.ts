@@ -8,30 +8,51 @@ export const importItemsController = async (req: Request, res: Response, next: N
     const tenantId = tenantContext.getStore() as string;
     const userId = (req as any).user?.id;
     let locationId = req.body.locationId;
-    const payload = req.body.data; // Expected to be an array of objects
+    const payload = req.body.data;
 
     if (!Array.isArray(payload) || payload.length === 0) {
       res.status(400).json({ success: false, message: 'El payload de datos está vacío o es inválido.' });
       return;
     }
 
-    // Si el cliente no pasa una ubicación explícita, usamos la principal/primera
     if (!locationId) {
       const defaultLocation = await prisma.location.findFirst({
         where: { tenantId }
       });
       if (!defaultLocation) {
-        res.status(400).json({ success: false, message: 'La empresa no tiene ninguna ubicación (Almacén) registrada.' });
+        res.status(400).json({ success: false, message: 'La empresa no tiene ninguna ubicación registrada.' });
         return;
       }
       locationId = defaultLocation.id;
     }
 
-    // Ejecutar el motor
-    const report = await executeBulkImportItems(tenantId, userId, locationId, payload);
+    const jobId = `IMPORT-ITEMS-${Date.now()}`;
+
+    // Ejecutar el motor de manera asíncrona ("importWorker")
+    setTimeout(async () => {
+      try {
+        const report = await executeBulkImportItems(tenantId, userId, locationId, payload);
+        await prisma.auditLog.create({
+          data: {
+            accion: "BULK_IMPORT_ITEMS_COMPLETED",
+            detalles: { jobId, report },
+            tenantId,
+            userId
+          }
+        });
+      } catch (e: any) {
+        await prisma.auditLog.create({
+          data: {
+            accion: "BULK_IMPORT_ITEMS_FAILED",
+            detalles: { jobId, error: e.message },
+            tenantId,
+            userId
+          }
+        });
+      }
+    }, 0);
     
-    // Devolvemos el reporte exacto como JSON
-    res.status(report.success ? 200 : 207).json(report);
+    res.status(202).json({ success: true, message: 'Importación iniciada en segundo plano.', data: { jobId } });
   } catch (error) {
     next(error);
   }
@@ -48,9 +69,33 @@ export const importCustomersController = async (req: Request, res: Response, nex
       return;
     }
 
-    const report = await executeBulkImportCustomers(tenantId, userId, payload);
+    const jobId = `IMPORT-CUSTOMERS-${Date.now()}`;
+
+    // Worker Asíncrono
+    setTimeout(async () => {
+      try {
+        const report = await executeBulkImportCustomers(tenantId, userId, payload);
+        await prisma.auditLog.create({
+          data: {
+            accion: "BULK_IMPORT_CUSTOMERS_COMPLETED",
+            detalles: { jobId, report },
+            tenantId,
+            userId
+          }
+        });
+      } catch (e: any) {
+        await prisma.auditLog.create({
+          data: {
+            accion: "BULK_IMPORT_CUSTOMERS_FAILED",
+            detalles: { jobId, error: e.message },
+            tenantId,
+            userId
+          }
+        });
+      }
+    }, 0);
     
-    res.status(report.success ? 200 : 207).json(report);
+    res.status(202).json({ success: true, message: 'Importación iniciada en segundo plano.', data: { jobId } });
   } catch (error) {
     next(error);
   }

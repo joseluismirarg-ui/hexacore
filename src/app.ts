@@ -39,6 +39,8 @@ import { setupSwagger } from './docs/swagger';
 import webhookRoutes from './routes/webhook.routes';
 import bulkImportRoutes from './routes/bulk-import.routes';
 import cxcRoutes from './routes/cxc.routes';
+import stripeRoutes from './routes/stripe.routes';
+import { StripeController } from './controllers/stripe.controller';
 
 import authRoutes from './routes/auth.routes';
 import { authenticateToken, requireSuperAdmin } from './middleware/auth.middleware';
@@ -81,6 +83,7 @@ app.use(cors(corsOptions));
 // WEBHOOKS (DEBEN IR ANTES DE EXPRESS.JSON PARA MANTENER EL RAW BODY)
 // =============================================================================
 app.use('/api/webhooks', express.raw({ type: 'application/json' }), webhookRoutes);
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), StripeController.webhook);
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -156,6 +159,7 @@ app.use('/api/analytics', authenticateToken, analyticsRoutes);
 app.use('/api/trucks', authenticateToken, truckRoutes);
 app.use('/api/bulk-import', authenticateToken, bulkImportRoutes);
 app.use('/api/cxc', authenticateToken, cxcRoutes);
+app.use('/api/stripe', authenticateToken, stripeRoutes);
 
 // Servir siempre el frontend compilado (ignorar NODE_ENV para evitar 404s en Railway)
   app.use(express.static(path.join(__dirname, '../frontend/dist')));

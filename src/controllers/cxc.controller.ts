@@ -72,12 +72,12 @@ export class CxcController {
 
   // ---------------------------------------------------------------------------
   // POST /api/v1/cxc/payments
-  // Registra un pago, deduce deuda, actualiza estado de transacción.
+  // Registra un pago y distribuye el abono en múltiples facturas (PaymentAllocation).
   // ---------------------------------------------------------------------------
   static async registerPayment(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const tenantId = (req as any).user?.tenantId || "default-tenant";
-      const { customerId, transactionId, amount, method, notes } = req.body;
+      const { customerId, amount, method, notes, allocations } = req.body;
 
       if (!customerId || !amount || !method) {
         throw new UnprocessableEntityError("Faltan campos requeridos (customerId, amount, method)", "BAD_REQUEST");
@@ -88,38 +88,80 @@ export class CxcController {
         throw new UnprocessableEntityError("El monto debe ser mayor a 0", "INVALID_AMOUNT");
       }
 
+      // Validar que la suma de allocations no exceda el monto pagado
+      if (allocations && Array.isArray(allocations)) {
+        const sumaAsignada = allocations.reduce((sum: number, alloc: any) => sum + Number(alloc.amount), 0);
+        if (new Prisma.Decimal(sumaAsignada).greaterThan(pagoMonto)) {
+          throw new UnprocessableEntityError("La suma de las asignaciones excede el pago total", "OVER_ALLOCATION");
+        }
+      }
+
       const payment = await prisma.$transaction(async (tx) => {
         const customer = await tx.customer.findUnique({ where: { id: customerId, tenantId } });
         if (!customer) throw new NotFoundError("Cliente no encontrado");
 
-        let targetTx = null;
-        let requires_rep = false;
-        
-        if (transactionId) {
-          targetTx = await tx.transaction.findUnique({ where: { id: transactionId, tenantId } });
-          if (!targetTx) throw new NotFoundError("Transacción no encontrada");
-          
-          if (targetTx.status === 'COMPLETADO') {
-            throw new UnprocessableEntityError("La transacción ya está pagada (COMPLETADO)", "ALREADY_PAID");
-          }
-
-          const invoice = await tx.invoice.findFirst({ where: { transactionId: targetTx.id, tenantId } });
-          if (invoice && invoice.metodo_pago === 'PPD') {
-            requires_rep = true;
-          }
-        }
-
+        // Crear el pago cabecera
         const newPayment = await tx.payment.create({
           data: {
             amount: pagoMonto,
             method,
             notes,
-            requires_rep,
             customerId,
-            transactionId: targetTx ? targetTx.id : null,
             tenantId
           }
         });
+
+        // Aplicar Allocations si existen
+        let requires_rep_global = false;
+        
+        if (allocations && Array.isArray(allocations)) {
+          for (const alloc of allocations) {
+            const allocMonto = new Prisma.Decimal(alloc.amount);
+            
+            // Crear Allocation
+            await tx.paymentAllocation.create({
+              data: {
+                amount: allocMonto,
+                paymentId: newPayment.id,
+                invoiceId: alloc.invoiceId,
+                tenantId
+              }
+            });
+
+            // Leer Invoice
+            const invoice = await tx.invoice.findUnique({
+              where: { id: alloc.invoiceId, tenantId },
+              include: { transaction: true }
+            });
+
+            if (invoice) {
+              if (invoice.metodo_pago === 'PPD') requires_rep_global = true;
+
+              // Calcular total pagado a esa transacción/factura
+              const sumAlloc = await tx.paymentAllocation.aggregate({
+                where: { invoiceId: invoice.id, tenantId },
+                _sum: { amount: true }
+              });
+
+              const totalAsignado = sumAlloc._sum.amount || new Prisma.Decimal(0);
+              
+              if (totalAsignado.greaterThanOrEqualTo(invoice.transaction.total)) {
+                await tx.transaction.update({
+                  where: { id: invoice.transaction.id },
+                  data: { status: 'COMPLETADO' }
+                });
+              }
+            }
+          }
+        }
+
+        if (requires_rep_global) {
+          await tx.payment.update({
+            where: { id: newPayment.id },
+            data: { requires_rep: true }
+          });
+          // El EventBus para REP se dispararía aquí asíncronamente
+        }
 
         const newDebt = customer.currentDebt.sub(pagoMonto);
         await tx.customer.update({
@@ -127,23 +169,8 @@ export class CxcController {
           data: { currentDebt: newDebt.lessThan(0) ? 0 : newDebt }
         });
 
-        if (targetTx) {
-          const pastPayments = await tx.payment.aggregate({
-            where: { transactionId: targetTx.id },
-            _sum: { amount: true }
-          });
-          const totalPagado = pastPayments._sum.amount || new Prisma.Decimal(0);
-          
-          if (totalPagado.greaterThanOrEqualTo(targetTx.total)) {
-            await tx.transaction.update({
-              where: { id: targetTx.id },
-              data: { status: 'COMPLETADO' }
-            });
-          }
-        }
-
         return newPayment;
-      });
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
       res.status(201).json({ success: true, data: payment });
     } catch (error) {

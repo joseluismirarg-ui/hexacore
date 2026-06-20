@@ -7,6 +7,8 @@ import {
   registrarTransaccion,
   getTransaccion,
   listarTransacciones,
+  solicitarAutorizacion,
+  webhookWhatsAppAutorizacion
 } from "../controllers/transaction.controller";
 
 const router = Router();
@@ -24,5 +26,8 @@ router.get("/", listarTransacciones);
 // GET /api/v1/transacciones/:id
 // Obtiene una transacción específica con todos sus items.
 router.get("/:id", getTransaccion);
+
+router.post("/solicitar-autorizacion", solicitarAutorizacion);
+router.post("/webhook-whatsapp", webhookWhatsAppAutorizacion);
 
 export default router;

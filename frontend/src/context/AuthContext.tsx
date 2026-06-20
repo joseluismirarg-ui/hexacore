@@ -17,6 +17,8 @@ interface AuthContextType {
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isImpersonating: boolean;
+  revertImpersonation: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,8 +27,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isImpersonating, setIsImpersonating] = useState(false);
 
   useEffect(() => {
+    const checkImpersonation = () => {
+      const imp = sessionStorage.getItem('impersonatedTenantId');
+      setIsImpersonating(!!imp);
+    };
+
     // 1. Obtener la sesión actual al cargar
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -36,9 +44,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: session.user.email || '',
           name: session.user.user_metadata?.name || 'Usuario',
           role: session.user.user_metadata?.role || 'USER',
-          tenantId: session.user.user_metadata?.tenantId || 'default-tenant'
+          tenantId: sessionStorage.getItem('impersonatedTenantId') || session.user.user_metadata?.tenantId || 'default-tenant'
         });
       }
+      checkImpersonation();
       setIsLoading(false);
     });
 
@@ -51,19 +60,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: session.user.email || '',
           name: session.user.user_metadata?.name || 'Usuario',
           role: session.user.user_metadata?.role || 'USER',
-          tenantId: session.user.user_metadata?.tenantId || 'default-tenant'
+          tenantId: sessionStorage.getItem('impersonatedTenantId') || session.user.user_metadata?.tenantId || 'default-tenant'
         });
       } else {
         setUser(null);
       }
+      checkImpersonation();
       setIsLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    // Listen for storage events (if impersonation changed in another tab or programmatically)
+    window.addEventListener('storage', checkImpersonation);
+    
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('storage', checkImpersonation);
+    };
   }, []);
 
   const logout = async () => {
+    sessionStorage.removeItem('impersonatedTenantId');
     await supabase.auth.signOut();
+  };
+
+  const revertImpersonation = () => {
+    sessionStorage.removeItem('impersonatedTenantId');
+    window.location.href = '/dashboard';
   };
 
   return (
@@ -75,6 +97,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logout,
         isAuthenticated: !!session,
         isLoading,
+        isImpersonating,
+        revertImpersonation
       }}
     >
       {!isLoading && children}

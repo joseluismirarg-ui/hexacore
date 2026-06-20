@@ -17,5 +17,7 @@ router.get("/", transaction_controller_1.listarTransacciones);
 // GET /api/v1/transacciones/:id
 // Obtiene una transacción específica con todos sus items.
 router.get("/:id", transaction_controller_1.getTransaccion);
+router.post("/solicitar-autorizacion", transaction_controller_1.solicitarAutorizacion);
+router.post("/webhook-whatsapp", transaction_controller_1.webhookWhatsAppAutorizacion);
 exports.default = router;
 //# sourceMappingURL=transaction.routes.js.map

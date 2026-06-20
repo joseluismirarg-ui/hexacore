@@ -196,6 +196,15 @@ export class TruckController {
       const { arrivalDateTime } = req.body;
 
       const result = await prisma.$transaction(async (tx) => {
+        // Validar que no queden paradas PENDIENTES
+        const pendingStops = await tx.tripStop.count({
+          where: { tripId: id, status: 'PENDING' }
+        });
+
+        if (pendingStops > 0) {
+          throw new Error(`Restricción TMS: No se puede completar el viaje. Hay ${pendingStops} paradas pendientes.`);
+        }
+
         const trip = await tx.trip.update({
           where: { id, tenantId },
           data: { arrivalDateTime: arrivalDateTime ? new Date(arrivalDateTime) : new Date() }
@@ -217,6 +226,78 @@ export class TruckController {
       });
 
       res.status(200).json({ success: true, data: result });
+    } catch (err: any) {
+      if (err.message.includes('Restricción TMS')) {
+        res.status(400).json({ error: err.message });
+      } else {
+        next(err);
+      }
+    }
+  }
+
+  static async completeTripStop(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { stopId } = req.params;
+      const { signatureUrl, photoUrl, notes } = req.body;
+
+      const stop = await prisma.tripStop.update({
+        where: { id: stopId },
+        data: {
+          status: 'DELIVERED',
+          signatureUrl,
+          photoUrl,
+          notes,
+          deliveredAt: new Date()
+        }
+      });
+
+      res.status(200).json({ success: true, data: stop });
+    } catch (err) { next(err); }
+  }
+
+  static async failTripStop(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { stopId } = req.params;
+      const { notes, photoUrl } = req.body;
+      const tenantId = tenantContext.getStore() || (req as any).user?.tenantId || "default-tenant";
+      const userId = (req as any).user?.id || "default-user";
+
+      const stop = await prisma.tripStop.update({
+        where: { id: stopId },
+        data: {
+          status: 'ISSUE',
+          notes,
+          photoUrl,
+          deliveredAt: new Date()
+        },
+        include: { trip: true }
+      });
+
+      // Evento Asíncrono de Entrega Fallida (log en AuditLog)
+      // Idealmente aquí se usaría un Message Broker (RabbitMQ/Kafka)
+      // Simulamos la asincronía emitiendo un log con un webhook interno
+      setTimeout(async () => {
+        try {
+          await prisma.auditLog.create({
+            data: {
+              accion: "TMS_ENTREGA_FALLIDA",
+              detalles: {
+                stopId: stop.id,
+                tripId: stop.tripId,
+                customer: stop.customerName,
+                reason: notes
+              },
+              tenantId,
+              userId
+            }
+          });
+          // Se dispararía un WebSocket a Logística
+        } catch (e) {
+          console.error("Error asíncrono al reportar entrega fallida", e);
+        }
+      }, 0);
+
+      res.status(200).json({ success: true, data: stop });
     } catch (err) { next(err); }
   }
 

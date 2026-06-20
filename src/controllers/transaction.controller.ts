@@ -21,6 +21,9 @@ import {
   UnprocessableEntityError,
   NotFoundError,
 } from "../lib/errors";
+// WebSocket import (mock/placeholder to simulate WS event emission)
+import { EventEmitter } from "events";
+export const wsEmitter = new EventEmitter();
 
 // =============================================================================
 // POST /api/v1/transacciones/registrar
@@ -388,5 +391,90 @@ export async function listarTransacciones(
     });
   } catch (err) {
     next(err);
+  }
+}
+
+// =============================================================================
+// POST /api/v1/transacciones/solicitar-autorizacion
+// =============================================================================
+
+export async function solicitarAutorizacion(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const dto: RegistrarTransaccionDTO = RegistrarTransaccionSchema.parse(req.body);
+    
+    // Aquí el backend simularía un request HTTP a la API de WhatsApp/Telegram
+    // Ej: axios.post('https://api.whatsapp.com/v1/messages', { to: 'GERENTE', template: 'auth_pos' })
+    
+    // Guardamos un intento temporal o simplemente lo dejamos en memoria
+    // Para simplificar, generamos un authRequestToken y lo retornamos.
+    const authRequestToken = `AUTH-${Date.now()}`;
+
+    const tenantId = (req as any).user?.tenantId || "default-tenant";
+    // Registrar en AuditLog el intento de bypass
+    await prisma.auditLog.create({
+      data: {
+        accion: "SOLICITUD_AUTORIZACION_POS",
+        detalles: {
+          token: authRequestToken,
+          customer: dto.customerId,
+          total: dto.total,
+          user: dto.userId
+        },
+        tenantId,
+        userId: dto.userId
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Solicitud enviada al gerente vía WhatsApp.",
+      data: { authRequestToken }
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// =============================================================================
+// POST /api/v1/transacciones/webhook-whatsapp
+// =============================================================================
+
+export async function webhookWhatsAppAutorizacion(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    // Payload que enviaría WhatsApp al interactuar con el botón
+    const { authRequestToken, status, originalPayload, tenantId, userId } = req.body;
+
+    if (status === 'APPROVED') {
+      // Como esto es un Webhook, no estamos en el req del cajero original.
+      // Se ejecutaría la transacción con forceSale: true, usando el originalPayload
+      // Sin embargo, una arquitectura más robusta emitiría el evento WS para que la caja 
+      // retome el flujo original ya desbloqueada.
+      
+      wsEmitter.emit(`auth_response_${authRequestToken}`, { status: 'APPROVED', originalPayload });
+      
+      await prisma.auditLog.create({
+        data: {
+          accion: "AUTORIZACION_POS_APROBADA",
+          detalles: { token: authRequestToken, payload: originalPayload },
+          tenantId: tenantId || "default-tenant",
+          userId: userId || "default-user"
+        }
+      });
+
+      res.status(200).send("OK - Approved");
+    } else {
+      wsEmitter.emit(`auth_response_${authRequestToken}`, { status: 'REJECTED' });
+      res.status(200).send("OK - Rejected");
+    }
+  } catch (error) {
+    next(error);
   }
 }

@@ -21,6 +21,8 @@ router.patch('/drivers/:id', TruckController.updateDriver);
 router.get('/trips', TruckController.getTrips);
 router.post('/trips/dispatch', TruckController.dispatchTrip);
 router.post('/trips/:id/complete', TruckController.completeTrip);
+router.post('/trips/stops/:stopId/complete', TruckController.completeTripStop);
+router.post('/trips/stops/:stopId/fail', TruckController.failTripStop);
 router.post('/trips/:id/expenses', TruckController.addTripExpense);
 
 export default router;

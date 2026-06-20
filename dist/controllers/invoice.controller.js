@@ -238,7 +238,17 @@ async function stampRep(req, res, next) {
         if (!paymentId)
             throw new errors_1.UnprocessableEntityError("paymentId es requerido", "BAD_REQUEST");
         const payment = await prisma_1.prisma.payment.findUnique({
-            where: { id: paymentId, tenantId }
+            where: { id: paymentId, tenantId },
+            include: {
+                allocations: {
+                    include: {
+                        invoice: {
+                            include: { transaction: true }
+                        }
+                    }
+                },
+                customer: true
+            }
         });
         if (!payment)
             throw new errors_1.NotFoundError("Pago no encontrado");
@@ -246,13 +256,84 @@ async function stampRep(req, res, next) {
             throw new errors_1.UnprocessableEntityError("Este pago no requiere REP", "REP_NOT_REQUIRED");
         if (payment.rep_uuid)
             throw new errors_1.UnprocessableEntityError("El REP ya fue emitido", "ALREADY_STAMPED");
-        // SIMULADOR DE PAC (REP):
+        // Construir los nodos de DoctoRelacionado (Parcialidades CFDI 4.0)
+        const documentosRelacionados = [];
+        for (const alloc of payment.allocations) {
+            if (!alloc.invoice || !alloc.invoice.uuid_sat)
+                continue;
+            // Calcular parcialidad (En un caso real se cuenta cuántos abonos ha tenido esta factura)
+            const pagosAnteriores = await prisma_1.prisma.paymentAllocation.aggregate({
+                where: {
+                    invoiceId: alloc.invoice.id,
+                    createdAt: { lt: alloc.createdAt }
+                },
+                _sum: { amount: true }
+            });
+            const impPagadoAnterior = pagosAnteriores._sum.amount ? Number(pagosAnteriores._sum.amount) : 0;
+            const impSaldoAnt = Number(alloc.invoice.transaction.total) - impPagadoAnterior;
+            const impPagado = Number(alloc.amount);
+            const impSaldoInsoluto = impSaldoAnt - impPagado;
+            // La parcialidad es el número de abonos previos + 1
+            const countAnteriores = await prisma_1.prisma.paymentAllocation.count({
+                where: {
+                    invoiceId: alloc.invoice.id,
+                    createdAt: { lt: alloc.createdAt }
+                }
+            });
+            const numParcialidad = countAnteriores + 1;
+            documentosRelacionados.push({
+                IdDocumento: alloc.invoice.uuid_sat,
+                Serie: "F",
+                Folio: alloc.invoice.id,
+                MonedaDR: "MXN",
+                NumParcialidad: numParcialidad,
+                ImpSaldoAnt: impSaldoAnt,
+                ImpPagado: impPagado,
+                ImpSaldoInsoluto: impSaldoInsoluto,
+                ObjetoImpDR: "01" // Sí objeto de impuesto (ejemplo)
+            });
+        }
+        // SIMULADOR DE PAC (REP CFDI 4.0):
         const fakeRepUuid = (0, crypto_1.randomUUID)().toUpperCase();
+        const baseUrl = process.env.SAT_MOCK_BASE_URL || 'https://cfdi.hexacore.mx/mock';
         const updatedPayment = await prisma_1.prisma.payment.update({
             where: { id: payment.id },
             data: { rep_uuid: fakeRepUuid }
         });
-        res.status(200).json({ success: true, data: updatedPayment, message: "Complemento de Pago (REP) timbrado exitosamente (Mock)" });
+        // Guardar log del XML simulado
+        await prisma_1.prisma.auditLog.create({
+            data: {
+                accion: "TIMBRADO_REP_4_0",
+                detalles: {
+                    uuid: fakeRepUuid,
+                    paymentId: payment.id,
+                    receptorRFC: payment.customer?.rfc,
+                    montoTotal: Number(payment.amount),
+                    documentosRelacionados
+                },
+                tenantId
+            }
+        });
+        res.status(200).json({
+            success: true,
+            message: "Complemento de Pago (REP) timbrado exitosamente (Mock)",
+            data: {
+                ...updatedPayment,
+                repPdfUrl: `${baseUrl}/pdf/${fakeRepUuid}.pdf`,
+                repXmlUrl: `${baseUrl}/xml/${fakeRepUuid}.xml`,
+                cfdiNode: {
+                    Version: "4.0",
+                    Pagos: {
+                        Pago: [{
+                                Monto: Number(payment.amount),
+                                FormaDePagoP: payment.method,
+                                MonedaP: "MXN",
+                                DoctoRelacionado: documentosRelacionados
+                            }]
+                    }
+                }
+            }
+        });
     }
     catch (error) {
         next(error);

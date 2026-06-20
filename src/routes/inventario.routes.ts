@@ -20,4 +20,9 @@ router.post('/traspaso', registrarTraspaso);
 router.get('/kardex', getAllKardex);
 router.get('/kardex/:itemId', getKardex);
 
+// Bloqueo explícito de mutaciones históricas (Kardex inmutable)
+router.put('/kardex/:id', (_req, res) => res.status(405).json({ error: 'Kardex is IMMUTABLE. Updates are strictly forbidden.' }));
+router.delete('/kardex/:id', (_req, res) => res.status(405).json({ error: 'Kardex is IMMUTABLE. Deletions are strictly forbidden.' }));
+router.patch('/kardex/:id', (_req, res) => res.status(405).json({ error: 'Kardex is IMMUTABLE. Patches are strictly forbidden.' }));
+
 export default router;

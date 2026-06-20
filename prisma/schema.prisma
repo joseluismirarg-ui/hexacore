@@ -132,6 +132,12 @@ model Tenant {
   tripExpenses          TripExpense[]
   moduleLicense         ModuleLicense?
 
+  // NEW MODULE RELATIONS
+  cashRegisters      CashRegister[]
+  cashShifts         CashShift[]
+  paymentAllocations PaymentAllocation[]
+  workOrders         WorkOrder[]
+
   @@map("tenants")
 }
 
@@ -160,6 +166,8 @@ model User {
   Ticket          Ticket[]
   routeVisits     RouteVisit[]
 
+  cashShifts CashShift[]
+
   @@map("users")
 }
 
@@ -183,6 +191,8 @@ model Customer {
 
   tenantId String @default("default-tenant") @map("tenant_id")
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  deletedAt DateTime? @map("deleted_at")
 
   transactions       Transaction[]
   salesOrders        SalesOrder[]
@@ -271,6 +281,8 @@ model Item {
 
   tenantId String @default("default-tenant") @map("tenant_id")
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  deletedAt DateTime? @map("deleted_at")
 
   priceListItems      PriceListItem[]
   inventoryStocks     InventoryStock[]
@@ -380,6 +392,7 @@ model KardexMovement {
 
   locationOrigenId  String? @map("location_origen_id")
   locationDestinoId String? @map("location_destino_id")
+  transitLocationId String? @map("transit_location_id")
 
   itemId String @map("item_id")
   item   Item   @relation(fields: [itemId], references: [id], onDelete: Restrict)
@@ -419,6 +432,8 @@ model Transaction {
   tenantId String @default("default-tenant") @map("tenant_id")
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  deletedAt DateTime? @map("deleted_at")
+
   items    TransactionItem[]
   payments Payment[]
   invoices Invoice[]
@@ -455,7 +470,7 @@ model Payment {
   method PaymentMethod
   date   DateTime      @default(now())
   notes  String?
-  
+
   requires_rep Boolean @default(false) @map("requires_rep")
   rep_uuid     String? @map("rep_uuid")
 
@@ -467,6 +482,8 @@ model Payment {
 
   tenantId String @default("default-tenant") @map("tenant_id")
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  allocations PaymentAllocation[]
 
   @@index([customerId])
   @@index([date])
@@ -571,6 +588,10 @@ model Invoice {
   tenantId String @default("default-tenant") @map("tenant_id")
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  deletedAt DateTime? @map("deleted_at")
+
+  paymentAllocations PaymentAllocation[]
+
   @@index([customerId])
   @@index([transactionId])
   @@index([status])
@@ -585,6 +606,9 @@ model AuditLog {
   id        String   @id @default(cuid())
   accion    String
   detalles  Json
+  oldData   Json?    @map("old_data")
+  newData   Json?    @map("new_data")
+  ipAddress String?  @map("ip_address")
   timestamp DateTime @default(now())
 
   userId String @map("user_id")
@@ -859,8 +883,9 @@ model BillOfMaterials {
   productionCost Decimal?  @default(0) @map("production_cost") @db.Decimal(10, 2)
   createdAt      DateTime  @default(now())
 
-  tenantId String @default("default-tenant") @map("tenant_id")
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantId  String      @default("default-tenant") @map("tenant_id")
+  tenant    Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  WorkOrder WorkOrder[]
 }
 
 model BOMItem {
@@ -1036,8 +1061,8 @@ model Driver {
 model Trip {
   id                 String    @id @default(cuid())
   tripId             String    @map("trip_id") // Auto-generated human readable ID (e.g., TRP-1001)
-  estimatedRevenue   Decimal   @default(0) @db.Decimal(14, 4) @map("estimated_revenue")
-  driverFee          Decimal   @default(0) @db.Decimal(14, 4) @map("driver_fee")
+  estimatedRevenue   Decimal   @default(0) @map("estimated_revenue") @db.Decimal(14, 4)
+  driverFee          Decimal   @default(0) @map("driver_fee") @db.Decimal(14, 4)
   cargoDescription   String    @map("cargo_description")
   departureDateTime  DateTime  @default(now()) @map("departure_date_time")
   arrivalDateTime    DateTime? @map("arrival_date_time")
@@ -1090,25 +1115,106 @@ enum StopStatus {
 }
 
 model TripStop {
-  id              String      @id @default(cuid())
-  tripId          String      @map("trip_id")
-  sequence        Int         
-  
-  customerName    String      @map("customer_name")
-  address         String
-  phone           String?
-  lat             Float?
-  lng             Float?
-  
-  status          StopStatus  @default(PENDING)
-  notes           String?
-  
-  signatureUrl    String?     @map("signature_url")
-  photoUrl        String?     @map("photo_url")
-  
-  deliveredAt     DateTime?   @map("delivered_at")
+  id       String @id @default(cuid())
+  tripId   String @map("trip_id")
+  sequence Int
 
-  trip            Trip        @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  
+  customerName String  @map("customer_name")
+  address      String
+  phone        String?
+  lat          Float?
+  lng          Float?
+
+  status StopStatus @default(PENDING)
+  notes  String?
+
+  signatureUrl String? @map("signature_url")
+  photoUrl     String? @map("photo_url")
+
+  deliveredAt DateTime? @map("delivered_at")
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
   @@map("trip_stops")
+}
+
+// =============================================================================
+// NEW MODULES: POS CASH MANAGEMENT, BOM WORK ORDERS, CXC ALLOCATIONS
+// =============================================================================
+
+model CashRegister {
+  id       String  @id @default(cuid())
+  name     String
+  isActive Boolean @default(true) @map("is_active")
+
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  shifts CashShift[]
+
+  @@map("cash_registers")
+}
+
+model CashShift {
+  id             String    @id @default(cuid())
+  openedAt       DateTime  @default(now()) @map("opened_at")
+  closedAt       DateTime? @map("closed_at")
+  openingAmount  Decimal   @map("opening_amount") @db.Decimal(14, 2)
+  closingAmount  Decimal?  @map("closing_amount") @db.Decimal(14, 2)
+  expectedAmount Decimal?  @map("expected_amount") @db.Decimal(14, 2)
+  notes          String?
+
+  registerId String       @map("register_id")
+  register   CashRegister @relation(fields: [registerId], references: [id], onDelete: Restrict)
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("cash_shifts")
+}
+
+model PaymentAllocation {
+  id        String   @id @default(cuid())
+  amount    Decimal  @db.Decimal(14, 2)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  paymentId String  @map("payment_id")
+  payment   Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  invoiceId String  @map("invoice_id")
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+  @@index([invoiceId])
+  @@map("payment_allocations")
+}
+
+enum WorkOrderStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model WorkOrder {
+  id          String          @id @default(cuid())
+  status      WorkOrderStatus @default(PENDING)
+  quantity    Int
+  startedAt   DateTime?       @map("started_at")
+  completedAt DateTime?       @map("completed_at")
+  notes       String?
+
+  bomId String          @map("bom_id")
+  bom   BillOfMaterials @relation(fields: [bomId], references: [id], onDelete: Restrict)
+
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("work_orders")
 }

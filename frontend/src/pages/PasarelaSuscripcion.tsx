@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useTenantConfig } from '@/lib/hooks';
 import { Shield, Zap, Building2, CheckCircle2 } from 'lucide-react';
-import { formatCurrency } from '@/lib/api';
+import { formatCurrency, subscriptionApi } from '@/lib/api';
 
 export default function PasarelaSuscripcion() {
   const { data: tenant, loading } = useTenantConfig();
@@ -9,13 +9,23 @@ export default function PasarelaSuscripcion() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
 
   const handleCheckout = async (plan: string) => {
-    setProcessing(plan);
-    // Simulación de Stripe Checkout Redirect
-    setTimeout(() => {
-      alert(`Redirigiendo a Stripe para el plan ${plan} (${billingCycle === 'annual' ? 'Anual' : 'Mensual'})...`);
+    try {
+      setProcessing(plan);
+      const res = await subscriptionApi.createCheckoutSession({
+        tier: plan,
+        billingCycle,
+        tenantId: tenant?.id
+      });
+      if (res.success && res.data?.url) {
+        window.location.href = res.data.url;
+      } else {
+        alert('Error al crear sesión de pago');
+        setProcessing(null);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Error al conectar con Stripe');
       setProcessing(null);
-      // En prod: window.location.href = session.url;
-    }, 1500);
+    }
   };
 
   if (loading) return <div className="h-screen bg-hc-bg text-white flex items-center justify-center">Validando licencia...</div>;

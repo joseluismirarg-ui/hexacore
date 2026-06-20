@@ -12,5 +12,9 @@ router.get('/camiones/:id/liquidacion', inventario_controller_1.getLiquidacion);
 router.post('/traspaso', inventario_controller_1.registrarTraspaso);
 router.get('/kardex', inventario_controller_1.getAllKardex);
 router.get('/kardex/:itemId', inventario_controller_1.getKardex);
+// Bloqueo explícito de mutaciones históricas (Kardex inmutable)
+router.put('/kardex/:id', (_req, res) => res.status(405).json({ error: 'Kardex is IMMUTABLE. Updates are strictly forbidden.' }));
+router.delete('/kardex/:id', (_req, res) => res.status(405).json({ error: 'Kardex is IMMUTABLE. Deletions are strictly forbidden.' }));
+router.patch('/kardex/:id', (_req, res) => res.status(405).json({ error: 'Kardex is IMMUTABLE. Patches are strictly forbidden.' }));
 exports.default = router;
 //# sourceMappingURL=inventario.routes.js.map

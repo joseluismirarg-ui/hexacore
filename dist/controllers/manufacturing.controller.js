@@ -65,51 +65,83 @@ class ManufacturingController {
             next(error);
         }
     }
-    static async processProductionOrder(req, res) {
+    static async getWorkOrders(req, res, next) {
+        try {
+            const tenantId = tenant_middleware_1.tenantContext.getStore() || req.user?.tenantId;
+            const workOrders = await prisma_1.prisma.workOrder.findMany({
+                where: { tenantId },
+                include: {
+                    bom: {
+                        include: { item: true }
+                    }
+                },
+                orderBy: { id: 'desc' }
+            });
+            res.json({ success: true, data: workOrders });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async createWorkOrder(req, res, next) {
+        try {
+            const tenantId = tenant_middleware_1.tenantContext.getStore() || req.user?.tenantId;
+            const { bomId, quantity, notes } = req.body;
+            if (!bomId || !quantity || quantity <= 0) {
+                res.status(400).json({ error: 'Datos inválidos' });
+                return;
+            }
+            const order = await prisma_1.prisma.workOrder.create({
+                data: {
+                    bomId,
+                    quantity: parseInt(quantity),
+                    notes,
+                    status: 'PENDING',
+                    tenantId
+                }
+            });
+            res.status(201).json({ success: true, data: order });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async startWorkOrder(req, res, next) {
         try {
             const tenantId = tenant_middleware_1.tenantContext.getStore() || req.user?.tenantId;
             const userId = req.user?.id || 'system';
-            const { itemId, quantity, locationId } = req.body; // itemId represents the final product to build
-            const productionQty = parseInt(quantity);
-            if (isNaN(productionQty) || productionQty <= 0) {
-                res.status(400).json({ error: 'Cantidad inválida' });
-                return;
-            }
-            const bom = await prisma_1.prisma.billOfMaterials.findUnique({
-                where: { itemId },
-                include: { components: true }
+            const { workOrderId, locationId } = req.body;
+            const order = await prisma_1.prisma.workOrder.findUnique({
+                where: { id: workOrderId, tenantId },
+                include: { bom: { include: { components: true } } }
             });
-            if (!bom || bom.tenantId !== tenantId) {
-                res.status(400).json({ error: 'No existe receta para este producto' });
+            if (!order) {
+                res.status(404).json({ error: 'WorkOrder no encontrada' });
                 return;
             }
-            const result = await prisma_1.prisma.$transaction(async (tx) => {
-                let totalMaterialCost = 0;
-                for (const item of bom.components) {
-                    const requiredQty = item.quantityRequired * productionQty;
-                    // Encontrar costo del componente (simplificado, usaríamos cost de Item)
-                    const componentItem = await tx.item.findUnique({ where: { id: item.componentId } });
-                    const cost = componentItem?.cost ? Number(componentItem.cost) : 0;
-                    totalMaterialCost += cost * requiredQty;
-                    // Si pasaron una locationId, descontar de Inventories (locationId, itemId)
+            if (order.status !== 'PENDING') {
+                res.status(400).json({ error: 'La orden no está en estado PENDIENTE' });
+                return;
+            }
+            await prisma_1.prisma.$transaction(async (tx) => {
+                for (const item of order.bom.components) {
+                    const requiredQty = item.quantityRequired * order.quantity;
                     if (locationId) {
-                        const updateComp = await tx.inventory.update({
-                            where: { locationId_itemId: { locationId, itemId: item.componentId } },
+                        const updateComp = await tx.inventoryStock.updateMany({
+                            where: { locationId, itemId: item.componentId, quantity: { gte: requiredQty } },
                             data: { quantity: { decrement: requiredQty } }
                         });
-                        if (updateComp.quantity < 0) {
-                            throw new Error(`Stock insuficiente para componente en la ubicación seleccionada.`);
+                        if (updateComp.count === 0) {
+                            throw new Error(`Stock insuficiente para componente ${item.componentId} en la ubicación seleccionada.`);
                         }
                     }
-                    // Decrement globalStock always
-                    const itemUpdate = await tx.item.update({
-                        where: { id: item.componentId },
+                    const itemUpdate = await tx.item.updateMany({
+                        where: { id: item.componentId, globalStock: { gte: requiredQty } },
                         data: { globalStock: { decrement: requiredQty } }
                     });
-                    if (itemUpdate.globalStock < 0) {
-                        throw new Error(`Stock global insuficiente para el componente: ${itemUpdate.name}`);
+                    if (itemUpdate.count === 0) {
+                        throw new Error(`Stock global insuficiente para el componente: ${item.componentId}`);
                     }
-                    // Kardex for component (Salida por manufactura)
                     await tx.kardexMovement.create({
                         data: {
                             tipo: 'PRODUCCION_MANUFACTURA',
@@ -118,46 +150,88 @@ class ManufacturingController {
                             itemId: item.componentId,
                             userId: userId,
                             tenantId: tenantId,
-                            notes: `Consumo materia prima para manufactura de ${productionQty} unid. de ${itemId}`
+                            notes: `Consumo (Inicio) para WorkOrder ${order.id}`
                         }
                     });
                 }
-                // Alta del producto final
-                const productionCost = bom.productionCost ? Number(bom.productionCost) : 0;
-                const unitCost = (totalMaterialCost / productionQty) + productionCost;
+                await tx.workOrder.update({
+                    where: { id: order.id },
+                    data: { status: 'IN_PROGRESS', startedAt: new Date() }
+                });
+            });
+            res.status(200).json({ success: true, message: 'Orden iniciada' });
+        }
+        catch (error) {
+            res.status(400).json({ error: error.message });
+        }
+    }
+    static async completeWorkOrder(req, res, next) {
+        try {
+            const tenantId = tenant_middleware_1.tenantContext.getStore() || req.user?.tenantId;
+            const userId = req.user?.id || 'system';
+            const { workOrderId, locationId } = req.body;
+            const order = await prisma_1.prisma.workOrder.findUnique({
+                where: { id: workOrderId, tenantId },
+                include: { bom: { include: { components: true } } }
+            });
+            if (!order) {
+                res.status(404).json({ error: 'WorkOrder no encontrada' });
+                return;
+            }
+            if (order.status !== 'IN_PROGRESS') {
+                res.status(400).json({ error: 'La orden debe estar IN_PROGRESS' });
+                return;
+            }
+            const result = await prisma_1.prisma.$transaction(async (tx) => {
+                let totalMaterialCost = 0;
+                for (const item of order.bom.components) {
+                    const requiredQty = item.quantityRequired * order.quantity;
+                    const componentItem = await tx.item.findUnique({ where: { id: item.componentId } });
+                    const cost = componentItem?.cost ? Number(componentItem.cost) : 0;
+                    totalMaterialCost += cost * requiredQty;
+                }
+                const productionCost = order.bom.productionCost ? Number(order.bom.productionCost) : 0;
+                const unitCost = (totalMaterialCost / order.quantity) + productionCost;
                 if (locationId) {
-                    await tx.inventory.upsert({
-                        where: { locationId_itemId: { locationId, itemId } },
-                        update: { quantity: { increment: productionQty } },
-                        create: { locationId, itemId, quantity: productionQty }
+                    await tx.inventoryStock.upsert({
+                        where: { locationId_itemId: { locationId, itemId: order.bom.itemId } },
+                        update: { quantity: { increment: order.quantity } },
+                        create: { locationId, itemId: order.bom.itemId, quantity: order.quantity }
                     });
                 }
-                // Increment globalStock for final item and update cost
+                const finalItem = await tx.item.findUnique({ where: { id: order.bom.itemId } });
+                const currentStock = finalItem?.globalStock || 0;
+                const currentTotalCost = (finalItem?.cost ? Number(finalItem.cost) : 0) * currentStock;
+                const newTotalCost = currentTotalCost + (unitCost * order.quantity);
+                const newAverageCost = (currentStock + order.quantity) > 0 ? (newTotalCost / (currentStock + order.quantity)) : unitCost;
                 await tx.item.update({
-                    where: { id: itemId },
+                    where: { id: order.bom.itemId },
                     data: {
-                        globalStock: { increment: productionQty },
-                        cost: unitCost // actualizar el costo con el ultimo lote producido
+                        globalStock: { increment: order.quantity },
+                        cost: newAverageCost
                     }
                 });
-                // Kardex for final item
                 await tx.kardexMovement.create({
                     data: {
                         tipo: 'PRODUCCION_MANUFACTURA',
-                        cantidad: productionQty,
+                        cantidad: order.quantity,
                         locationDestinoId: locationId || null,
-                        itemId: itemId,
+                        itemId: order.bom.itemId,
                         userId: userId,
                         tenantId: tenantId,
-                        notes: `Entrada por manufactura. Costo Unitario estimado: $${unitCost.toFixed(2)}`
+                        notes: `Entrada (Completada) para WorkOrder ${order.id}. Costo Unitario Promedio: $${newAverageCost.toFixed(2)}`
                     }
                 });
-                return { status: 'COMPLETED', unitCost, quantityProduced: productionQty };
-            });
-            res.status(200).json({ success: true, message: 'Producción ejecutada correctamente', data: result });
+                const updatedOrder = await tx.workOrder.update({
+                    where: { id: order.id },
+                    data: { status: 'COMPLETED', completedAt: new Date() }
+                });
+                return { status: 'COMPLETED', unitCost, newAverageCost, quantityProduced: order.quantity };
+            }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+            res.status(200).json({ success: true, message: 'Orden completada y costos promediados', data: result });
         }
         catch (error) {
-            res.status(400).json({ error: error.message || 'Error en la orden de producción' });
+            res.status(400).json({ error: error.message || 'Error al completar orden' });
         }
     }
 }
