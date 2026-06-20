@@ -7,6 +7,13 @@ import { supabase } from '@/lib/supabase';
 export function Landing() {
   const navigate = useNavigate();
   const [isDemoLoading, setIsDemoLoading] = useState(false);
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
+
+  const pricing = [
+    { name: 'Básico', monthly: 999, annual: 999 * 11 },
+    { name: 'Pro', monthly: 2899, annual: 2899 * 11 },
+    { name: 'Enterprise', monthly: 4999, annual: 4999 * 11 },
+  ];
 
   const handleDemo = async () => {
     setIsDemoLoading(true);
@@ -88,15 +95,36 @@ export function Landing() {
       {/* Pricing */}
       <section className="py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-center mb-16">Planes Flexibles para tu Crecimiento</h2>
+          <h2 className="text-3xl font-bold text-center mb-8">Planes Flexibles para tu Crecimiento</h2>
+          
+          {/* Toggle Mensual / Anual */}
+          <div className="flex items-center justify-center gap-3 mb-16">
+            <span className={`text-sm font-medium ${billingCycle === 'monthly' ? 'text-white' : 'text-gray-400'}`}>Mensual</span>
+            <button
+              onClick={() => setBillingCycle(b => b === 'monthly' ? 'annual' : 'monthly')}
+              className="relative inline-flex h-7 w-14 items-center rounded-full bg-hc-cobalt transition-colors focus:outline-none"
+            >
+              <span
+                className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                  billingCycle === 'annual' ? 'translate-x-8' : 'translate-x-1'
+                }`}
+              />
+            </button>
+            <span className={`text-sm font-medium flex items-center gap-2 ${billingCycle === 'annual' ? 'text-white' : 'text-gray-400'}`}>
+              Anual <span className="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded-full border border-green-500/30">1 Mes Gratis</span>
+            </span>
+          </div>
+
           <div className="grid md:grid-cols-3 gap-8">
-            {['Básico', 'Pro', 'Enterprise'].map((plan, i) => (
-              <div key={plan} className={`p-8 rounded-3xl border ${i === 1 ? 'border-hc-cobalt bg-hc-cobalt/5 relative scale-105' : 'border-gray-800 bg-hc-surface'} flex flex-col`}>
+            {pricing.map((plan, i) => (
+              <div key={plan.name} className={`p-8 rounded-3xl border ${i === 1 ? 'border-hc-cobalt bg-hc-cobalt/5 relative scale-105' : 'border-gray-800 bg-hc-surface'} flex flex-col`}>
                 {i === 1 && <span className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-hc-cobalt text-white px-4 py-1 rounded-full text-sm font-bold shadow-lg">Más Popular</span>}
-                <h3 className="text-2xl font-bold mb-4">{plan}</h3>
-                <div className="mb-6">
-                  <span className="text-4xl font-extrabold">${i === 0 ? '49' : i === 1 ? '99' : '299'}</span>
-                  <span className="text-gray-500">/mes</span>
+                <h3 className="text-2xl font-bold mb-4">{plan.name}</h3>
+                <div className="mb-6 flex flex-col">
+                  <div>
+                    <span className="text-4xl font-extrabold">${(billingCycle === 'monthly' ? plan.monthly : plan.annual).toLocaleString('es-MX')}</span>
+                  </div>
+                  <span className="text-sm font-normal text-gray-500">MXN / {billingCycle === 'monthly' ? 'mes' : 'año'}</span>
                 </div>
                 <ul className="space-y-4 mb-8 flex-1">
                   <li className="flex items-center gap-3 text-gray-300"><CheckCircle2 className="h-5 w-5 text-hc-cobalt" /> Hasta {i === 0 ? '1,000' : i === 1 ? '10,000' : 'Ilimitados'} Items</li>
