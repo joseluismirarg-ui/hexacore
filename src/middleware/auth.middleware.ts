@@ -32,8 +32,18 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
   }
 
   try {
-    // Validar token de forma segura contra la API de Supabase, 
-    // lo cual soporta tanto el antiguo HS256 como el nuevo RS256 automáticamente.
+    // 1. Intentar decodificar como JWT local (para impersonación de SuperAdmin)
+    try {
+      const decodedLocal = require('jsonwebtoken').verify(token, process.env.JWT_SECRET || 'fallback_secret') as any;
+      if (decodedLocal && decodedLocal.impersonated) {
+         req.user = { id: decodedLocal.userId, role: decodedLocal.role, tenantId: decodedLocal.tenantId };
+         return next();
+      }
+    } catch (e) {
+      // No es un token local válido (o no es de impersonación), continuamos con Supabase Auth
+    }
+
+    // 2. Validar token de forma segura contra la API de Supabase
     const { data: { user }, error } = await supabase.auth.getUser(token);
 
     if (error || !user) {

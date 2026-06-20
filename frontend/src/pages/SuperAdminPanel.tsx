@@ -155,7 +155,7 @@ export default function SuperAdminPanel() {
                             localStorage.setItem('hexa_token', res.data.token);
                             window.location.href = '/dashboard';
                           }
-                        } catch(e) { alert('La impersonación local está deshabilitada por la seguridad estricta de Supabase. Por favor inicie sesión con el correo del administrador.'); }
+                        } catch(e) { alert('Error al acceder al panel'); }
                       }}
                       className="flex-1 bg-primary text-primary-foreground py-2 text-sm font-medium rounded-md hover:bg-primary/90 transition-colors"
                     >

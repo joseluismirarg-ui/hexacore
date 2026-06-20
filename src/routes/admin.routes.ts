@@ -206,6 +206,7 @@ router.post('/impersonate/:tenantId', async (req: Request, res: Response, next: 
   try {
     const { tenantId } = req.params;
     const userId = (req as any).user?.id; // El admin que solicita
+    const userRole = (req as any).user?.role;
     
     const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
     if (!tenant) {
@@ -213,15 +214,14 @@ router.post('/impersonate/:tenantId', async (req: Request, res: Response, next: 
       return;
     }
 
-    const adminUser = await prisma.user.findUnique({ where: { id: userId } });
-    if (!adminUser || adminUser.role !== 'ADMIN') {
+    if (userRole !== 'ADMIN') {
       res.status(403).json({ success: false, message: 'No autorizado para impersonar' });
       return;
     }
 
     // Generar un nuevo token que mantiene el userId del admin pero apunta al tenantId del cliente
     const token = jwt.sign(
-      { userId: adminUser.id, role: adminUser.role, tenantId: tenant.id },
+      { userId: userId, role: userRole, tenantId: tenant.id, impersonated: true },
       process.env.JWT_SECRET || 'fallback_secret',
       { expiresIn: '2h' } // Token temporal
     );
