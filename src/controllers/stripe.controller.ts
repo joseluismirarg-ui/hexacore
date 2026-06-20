@@ -3,7 +3,7 @@ import Stripe from 'stripe';
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY || 'sk_test_mock';
 const stripe = new Stripe(stripeSecret, {
-  apiVersion: '2025-01-27.acacia', // Utilizar la última versión soportada o similar
+  apiVersion: '2026-05-27.dahlia' as any,
 });
 
 // Definir los precios según lo solicitado
@@ -69,7 +69,7 @@ export class StripeController {
     }
   }
 
-  static async webhook(req: Request, res: Response, next: NextFunction): Promise<void> {
+  static async webhook(req: Request, res: Response): Promise<void> {
     const sig = req.headers['stripe-signature'];
     const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
