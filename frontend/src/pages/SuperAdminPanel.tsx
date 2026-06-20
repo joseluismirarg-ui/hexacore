@@ -208,9 +208,13 @@ export default function SuperAdminPanel() {
                         </div>
                         <div className="space-y-1">
                           <label className="text-sm font-medium">Plan</label>
-                          <select className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                            value={formData.plan} onChange={e => setFormData({...formData, plan: e.target.value})}>
-                            <option value="BASIC">Gratis (Test)</option>
+                          <select
+                            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                            value={formData.plan}
+                            onChange={e => setFormData({ ...formData, plan: e.target.value })}
+                          >
+                            <option value="FREE">Gratis (Test)</option>
+                            <option value="BASIC">Básico</option>
                             <option value="PRO">Profesional</option>
                             <option value="ENTERPRISE">Empresarial</option>
                           </select>
