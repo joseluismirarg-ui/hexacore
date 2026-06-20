@@ -216,7 +216,7 @@ router.post('/impersonate/:tenantId', async (req: Request, res: Response, next: 
       return;
     }
 
-    if (userRole !== 'ADMIN') {
+    if (userRole !== 'ADMIN' && userRole !== 'SUPERADMIN') {
       res.status(403).json({ success: false, message: 'No autorizado para impersonar' });
       return;
     }

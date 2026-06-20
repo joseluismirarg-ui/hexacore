@@ -154,6 +154,7 @@ export default function SuperAdminPanel() {
                           const res = await api.post<{ token: string }>(`/api/admin/impersonate/${t.id}`, undefined);
                           if (res.data?.token) {
                             localStorage.setItem('hexa_token', res.data.token);
+                            sessionStorage.setItem('impersonatedTenantId', t.id);
                             window.location.href = '/dashboard';
                           }
                         } catch(e) { alert('Error al acceder al panel'); }

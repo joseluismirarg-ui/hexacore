@@ -80,11 +80,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     sessionStorage.removeItem('impersonatedTenantId');
+    localStorage.removeItem('hexa_token');
     await supabase.auth.signOut();
   };
 
   const revertImpersonation = () => {
     sessionStorage.removeItem('impersonatedTenantId');
+    localStorage.removeItem('hexa_token');
     window.location.href = '/dashboard';
   };
 

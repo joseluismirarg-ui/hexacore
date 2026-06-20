@@ -35,7 +35,8 @@ async function request<T>(
   };
 
   const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
+  const localToken = localStorage.getItem('hexa_token');
+  const token = localToken || session?.access_token;
   
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
