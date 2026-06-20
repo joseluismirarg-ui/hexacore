@@ -227,7 +227,7 @@ export function DirectorioClientes() {
         <div className="flex gap-3">
           <BulkImportButton
             endpoint="/api/bulk-import/customers"
-            onSuccess={() => refetch()}
+            onSuccess={() => load()}
             label="Importar Clientes"
           />
           <Button variant="primary" onClick={handleCreate} className="gap-2 shrink-0">

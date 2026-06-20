@@ -40,20 +40,23 @@ export function BulkImportButton({ endpoint, onSuccess, label = 'Importar Excel'
       const workbook = read(data, { type: 'array' });
       
       const firstSheetName = workbook.SheetNames[0];
+      if (!firstSheetName) throw new Error('El archivo Excel está vacío.');
+      
       const worksheet = workbook.Sheets[firstSheetName];
+      if (!worksheet) throw new Error('No se pudo leer la hoja del Excel.');
       
       // 2. Convertir a JSON
       const json = utils.sheet_to_json(worksheet, { defval: "" });
 
       // 3. Enviar a la API
-      const response = await api.post(endpoint, { data: json });
+      const response = await api.post(endpoint, { data: json }) as any;
       
       setReport({
-        summary: response.data.summary,
-        errors: response.data.errors,
+        summary: response.data?.summary,
+        errors: response.data?.errors || [],
       });
 
-      if (response.data.summary.successfully_imported > 0) {
+      if (response.data?.summary?.successfully_imported > 0) {
         onSuccess();
       }
 
