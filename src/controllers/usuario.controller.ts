@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto';
 
 export const getVendedores = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const tenantId = (req as any).tenant?.id;
+    const tenantId = (req as any).user?.tenantId;
     const vendedores = await prisma.user.findMany({
       where: tenantId ? { role: 'VENDEDOR', tenantId } : { role: 'VENDEDOR' },
       select: {
@@ -23,7 +23,7 @@ export const getVendedores = async (req: Request, res: Response, next: NextFunct
 
 export const getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const tenantId = (req as any).tenant?.id;
+    const tenantId = (req as any).user?.tenantId;
     const users = await prisma.user.findMany({
       where: tenantId ? { tenantId } : undefined,
       select: {
@@ -44,7 +44,7 @@ export const getAllUsers = async (req: Request, res: Response, next: NextFunctio
 export const createUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, name, role } = req.body;
-    const tenantId = (req as any).tenant?.id;
+    const tenantId = (req as any).user?.tenantId;
 
     const user = await prisma.user.create({
       data: { id: randomUUID(), email, name, role, tenantId },
