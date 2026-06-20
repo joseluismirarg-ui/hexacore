@@ -32,19 +32,19 @@ function createPrismaClient() {
             // Exclude models that don't have tenantId in their schema
             if (tenantModels.has(model as string)) {
               if (operation === 'findUnique' || operation === 'findFirst' || operation === 'findMany' || operation === 'update' || operation === 'updateMany' || operation === 'delete' || operation === 'deleteMany') {
-                (args as any).where = { ...(args as any).where, tenantId };
+                (args as any).where = { tenantId, ...(args as any).where };
               } else if (operation === 'create') {
-                (args as any).data = { ...(args as any).data, tenantId };
+                (args as any).data = { tenantId, ...(args as any).data };
               } else if (operation === 'createMany') {
                 if (Array.isArray((args as any).data)) {
-                  (args as any).data = (args as any).data.map((d: any) => ({ ...d, tenantId }));
+                  (args as any).data = (args as any).data.map((d: any) => ({ tenantId, ...d }));
                 } else {
-                  (args as any).data = { ...(args as any).data, tenantId };
+                  (args as any).data = { tenantId, ...(args as any).data };
                 }
               } else if (operation === 'upsert') {
-                (args as any).where = { ...(args as any).where, tenantId };
-                (args as any).create = { ...(args as any).create, tenantId };
-                (args as any).update = { ...(args as any).update, tenantId };
+                (args as any).where = { tenantId, ...(args as any).where };
+                (args as any).create = { tenantId, ...(args as any).create };
+                (args as any).update = { tenantId, ...(args as any).update };
               }
             }
           }
