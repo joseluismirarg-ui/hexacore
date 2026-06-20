@@ -622,13 +622,13 @@ export default function TruckDashboard() {
                    </div>
                    <div className="space-y-2 pr-6">
                      <input required placeholder="Nombre del Cliente (Ej. Abarrotes Pepe)" value={stop.customerName} onChange={(e) => {
-                       const newStops = [...dispatchStops]; newStops[index].customerName = e.target.value; setDispatchStops(newStops);
+                       const newStops = [...dispatchStops]; newStops[index]!.customerName = e.target.value; setDispatchStops(newStops);
                      }} className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" />
                      <input required placeholder="Dirección Exacta de la Entrega" value={stop.address} onChange={(e) => {
-                       const newStops = [...dispatchStops]; newStops[index].address = e.target.value; setDispatchStops(newStops);
+                       const newStops = [...dispatchStops]; newStops[index]!.address = e.target.value; setDispatchStops(newStops);
                      }} className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" />
                      <input placeholder="Teléfono de Contacto (Opcional)" value={stop.phone} onChange={(e) => {
-                       const newStops = [...dispatchStops]; newStops[index].phone = e.target.value; setDispatchStops(newStops);
+                       const newStops = [...dispatchStops]; newStops[index]!.phone = e.target.value; setDispatchStops(newStops);
                      }} className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" />
                    </div>
                  </div>
