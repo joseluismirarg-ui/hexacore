@@ -754,6 +754,7 @@ model ModuleLicense {
   manufacturingActive Boolean  @default(false)
   treasuryActive      Boolean  @default(false)
   reportsActive       Boolean  @default(false)
+  tmsActive           Boolean  @default(false)
   updatedAt           DateTime @updatedAt
 }
 

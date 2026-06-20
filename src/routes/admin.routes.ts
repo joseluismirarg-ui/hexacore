@@ -43,7 +43,7 @@ router.put('/tenants/:id/licenses', async (req: Request, res: Response, next: Ne
     const tenantId = req.params.id;
     const {
       erpActive, posActive, hrActive, billingActive,
-      logisticsActive, manufacturingActive, treasuryActive, reportsActive,
+      logisticsActive, manufacturingActive, treasuryActive, reportsActive, tmsActive
     } = req.body;
 
     let license = await prisma.moduleLicense.findUnique({ where: { tenantId } });
@@ -59,6 +59,7 @@ router.put('/tenants/:id/licenses', async (req: Request, res: Response, next: Ne
           manufacturingActive: manufacturingActive ?? false,
           treasuryActive: treasuryActive ?? false,
           reportsActive: reportsActive ?? false,
+          tmsActive: tmsActive ?? false,
         },
       });
     } else {
@@ -73,6 +74,7 @@ router.put('/tenants/:id/licenses', async (req: Request, res: Response, next: Ne
           ...(manufacturingActive !== undefined && { manufacturingActive }),
           ...(treasuryActive !== undefined && { treasuryActive }),
           ...(reportsActive !== undefined && { reportsActive }),
+          ...(tmsActive !== undefined && { tmsActive }),
         },
       });
     }
