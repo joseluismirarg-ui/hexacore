@@ -120,6 +120,7 @@ app.get('/health', (_req: Request, res: Response): void => {
     version: '2.0.0',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV ?? 'development',
+    dbUrl: process.env.DATABASE_URL?.substring(0, 30) + '...'
   });
 });
 
