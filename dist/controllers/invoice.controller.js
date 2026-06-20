@@ -300,6 +300,7 @@ async function stampRep(req, res, next) {
             where: { id: payment.id },
             data: { rep_uuid: fakeRepUuid }
         });
+        const userId = req.user?.id || "default-user";
         // Guardar log del XML simulado
         await prisma_1.prisma.auditLog.create({
             data: {
@@ -311,7 +312,8 @@ async function stampRep(req, res, next) {
                     montoTotal: Number(payment.amount),
                     documentosRelacionados
                 },
-                tenantId
+                tenantId,
+                userId
             }
         });
         res.status(200).json({

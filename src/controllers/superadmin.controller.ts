@@ -4,7 +4,7 @@ import crypto from 'crypto';
 
 export class SuperAdminController {
   
-  static async listTenants(req: Request, res: Response): Promise<void> {
+  static async listTenants(_req: Request, res: Response): Promise<void> {
     try {
       const tenants = await prisma.tenant.findMany({
         include: {

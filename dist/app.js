@@ -43,6 +43,9 @@ const swagger_1 = require("./docs/swagger");
 const webhook_routes_1 = __importDefault(require("./routes/webhook.routes"));
 const bulk_import_routes_1 = __importDefault(require("./routes/bulk-import.routes"));
 const cxc_routes_1 = __importDefault(require("./routes/cxc.routes"));
+const stripe_routes_1 = __importDefault(require("./routes/stripe.routes"));
+const stripe_controller_1 = require("./controllers/stripe.controller");
+const superadmin_routes_1 = __importDefault(require("./routes/superadmin.routes"));
 const auth_routes_1 = __importDefault(require("./routes/auth.routes"));
 const auth_middleware_1 = require("./middleware/auth.middleware");
 const app = (0, express_1.default)();
@@ -79,6 +82,7 @@ app.use((0, cors_1.default)(corsOptions));
 // WEBHOOKS (DEBEN IR ANTES DE EXPRESS.JSON PARA MANTENER EL RAW BODY)
 // =============================================================================
 app.use('/api/webhooks', express_1.default.raw({ type: 'application/json' }), webhook_routes_1.default);
+app.post('/api/stripe/webhook', express_1.default.raw({ type: 'application/json' }), stripe_controller_1.StripeController.webhook);
 app.use(express_1.default.json({ limit: '1mb' }));
 app.use(express_1.default.urlencoded({ extended: true }));
 // =============================================================================
@@ -140,11 +144,13 @@ app.use('/api/sales-orders', auth_middleware_1.authenticateToken, sales_order_ro
 app.use('/api/logistics', auth_middleware_1.authenticateToken, logistics_routes_1.default);
 app.use('/api/tenants', auth_middleware_1.authenticateToken, tenant_routes_1.default);
 app.use('/api/landlord', auth_middleware_1.authenticateToken, auth_middleware_1.requireSuperAdmin, landlord_routes_1.default);
+app.use('/api/v1/superadmin', auth_middleware_1.authenticateToken, auth_middleware_1.requireSuperAdmin, superadmin_routes_1.default);
 app.use('/api/billing', billing_routes_1.default); // Público por webhook
 app.use('/api/analytics', auth_middleware_1.authenticateToken, analytics_routes_1.default);
 app.use('/api/trucks', auth_middleware_1.authenticateToken, truck_routes_1.default);
 app.use('/api/bulk-import', auth_middleware_1.authenticateToken, bulk_import_routes_1.default);
 app.use('/api/cxc', auth_middleware_1.authenticateToken, cxc_routes_1.default);
+app.use('/api/stripe', auth_middleware_1.authenticateToken, stripe_routes_1.default);
 // Servir siempre el frontend compilado (ignorar NODE_ENV para evitar 404s en Railway)
 app.use(express_1.default.static(path_1.default.join(__dirname, '../frontend/dist')));
 // Cualquier ruta que no sea de la API, servirá el index.html del frontend

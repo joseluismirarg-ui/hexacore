@@ -337,6 +337,7 @@ async function solicitarAutorizacion(req, res, next) {
         // Guardamos un intento temporal o simplemente lo dejamos en memoria
         // Para simplificar, generamos un authRequestToken y lo retornamos.
         const authRequestToken = `AUTH-${Date.now()}`;
+        const tenantId = req.user?.tenantId || "default-tenant";
         // Registrar en AuditLog el intento de bypass
         await prisma_1.prisma.auditLog.create({
             data: {
@@ -346,7 +347,9 @@ async function solicitarAutorizacion(req, res, next) {
                     customer: dto.customerId,
                     total: dto.total,
                     user: dto.userId
-                }
+                },
+                tenantId,
+                userId: dto.userId
             }
         });
         res.status(200).json({
@@ -365,17 +368,19 @@ async function solicitarAutorizacion(req, res, next) {
 async function webhookWhatsAppAutorizacion(req, res, next) {
     try {
         // Payload que enviaría WhatsApp al interactuar con el botón
-        const { authRequestToken, status, originalPayload } = req.body;
+        const { authRequestToken, status, originalPayload, tenantId, userId } = req.body;
         if (status === 'APPROVED') {
             // Como esto es un Webhook, no estamos en el req del cajero original.
             // Se ejecutaría la transacción con forceSale: true, usando el originalPayload
             // Sin embargo, una arquitectura más robusta emitiría el evento WS para que la caja 
             // retome el flujo original ya desbloqueada.
-            exports.wsEmitter.emit(`auth_response_${authRequestToken}`, { status: 'APPROVED' });
+            exports.wsEmitter.emit(`auth_response_${authRequestToken}`, { status: 'APPROVED', originalPayload });
             await prisma_1.prisma.auditLog.create({
                 data: {
                     accion: "AUTORIZACION_POS_APROBADA",
-                    detalles: { token: authRequestToken }
+                    detalles: { token: authRequestToken, payload: originalPayload },
+                    tenantId: tenantId || "default-tenant",
+                    userId: userId || "default-user"
                 }
             });
             res.status(200).send("OK - Approved");
