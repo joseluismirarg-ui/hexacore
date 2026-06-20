@@ -600,7 +600,7 @@ model Location {
   id       String  @id @default(cuid())
   name     String
   location String?
-  code     String  @unique
+  code     String
 
   tenantId String @default("default-tenant") @map("tenant_id")
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -610,6 +610,7 @@ model Location {
   transfersFrom   StockTransfer[]  @relation("OriginLocation")
   transfersTo     StockTransfer[]  @relation("DestinationLocation")
 
+  @@unique([tenantId, code])
   @@map("locations")
 }
 

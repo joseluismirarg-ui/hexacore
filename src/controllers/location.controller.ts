@@ -3,9 +3,9 @@ import { prisma } from '../lib/prisma';
 import { z } from 'zod';
 
 const warehouseSchema = z.object({
-  name: z.string().min(2),
+  name: z.string().min(1, 'El nombre es obligatorio'),
   location: z.string().optional(),
-  code: z.string().min(2),
+  code: z.string().min(1, 'El código es obligatorio'),
 });
 
 export const getWarehouses = async (_req: Request, res: Response, next: NextFunction) => {

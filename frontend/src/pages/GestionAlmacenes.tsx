@@ -15,8 +15,8 @@ export default function GestionAlmacenes() {
       setShowModal(false);
       setFormData({ name: '', code: '', location: '' });
       execute();
-    } catch (err) {
-      alert('Error al crear almacén');
+    } catch (err: any) {
+      alert(err.message || 'Error al crear almacén');
     }
   };
 
