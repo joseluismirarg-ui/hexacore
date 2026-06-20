@@ -7,10 +7,18 @@ if (typeof global !== 'undefined' && !(global as any).WebSocket) {
   (global as any).WebSocket = WebSocket;
 }
 
-// Inicializar cliente de Supabase para el backend usando las variables de entorno disponibles
-// Usamos fallbacks para evitar que la app explote en el arranque (502 Bad Gateway) si falta la variable
-const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || 'https://dummy.supabase.co';
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || 'dummy';
+console.log('[DEBUG] Backend Env Vars:', {
+  hasViteUrl: !!process.env.VITE_SUPABASE_URL,
+  hasSupaUrl: !!process.env.SUPABASE_URL,
+  viteUrlLen: process.env.VITE_SUPABASE_URL?.length,
+  supaUrlLen: process.env.SUPABASE_URL?.length,
+  hasJwtSecret: !!process.env.SUPABASE_JWT_SECRET
+});
+
+// Inicializar cliente de Supabase para el backend usando las mismas credenciales hardcodeadas del frontend
+// Esto evita errores 403 si las variables de Railway tienen errores de tipeo.
+const supabaseUrl = 'https://xlqdteghltctdorrpfdo.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhscWR0ZWdobHRjdGRvcnJwZmRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4MTcwNDQsImV4cCI6MjA5NzM5MzA0NH0.IkHt8Kp2n12ctqlG74Azu4iHY08pWzcYbYeG0NZz1no';
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 

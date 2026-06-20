@@ -110,7 +110,7 @@ router.post('/tenants', async (req: Request, res: Response, next: NextFunction):
     });
 
     // 3. Crear el Administrador en Supabase Auth usando el API Admin
-    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
+    const supabaseUrl = 'https://xlqdteghltctdorrpfdo.supabase.co';
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
     if (!supabaseUrl || !supabaseServiceKey) {
