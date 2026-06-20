@@ -1,11 +1,8 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.approveLeave = exports.requestLeave = exports.calculatePayroll = exports.getRouteVisits = exports.registerRouteVisit = exports.getAttendanceDashboard = exports.checkInOut = exports.updateEmployee = exports.createEmployee = exports.getEmployees = void 0;
 const prisma_1 = require("../lib/prisma");
-const bcrypt_1 = __importDefault(require("bcrypt"));
+const crypto_1 = require("crypto");
 // ============================================================================
 // HR MODULE CONTROLLER (Isolated & Expanded)
 // ============================================================================
@@ -28,15 +25,14 @@ exports.getEmployees = getEmployees;
 const createEmployee = async (req, res) => {
     try {
         const tenantId = req.tenant?.id;
-        const { name, email, role, password, employeeCode, rfc, curp, phone, emergencyContact, salaryBase, salaryPeriod, shiftStartTime, earnCommission, commissionPercentage, productivityBonus, punctualityBonus, attendanceBonus } = req.body;
-        const passwordHash = await bcrypt_1.default.hash(password || '123456', 10);
+        const { name, email, role, employeeCode, rfc, curp, phone, emergencyContact, salaryBase, salaryPeriod, shiftStartTime, earnCommission, commissionPercentage, productivityBonus, punctualityBonus, attendanceBonus } = req.body;
         const result = await prisma_1.prisma.$transaction(async (tx) => {
             const user = await tx.user.create({
                 data: {
+                    id: (0, crypto_1.randomUUID)(),
                     name,
                     email,
                     role,
-                    passwordHash,
                     tenantId
                 }
             });
@@ -70,12 +66,15 @@ exports.createEmployee = createEmployee;
 const updateEmployee = async (req, res) => {
     try {
         const { id } = req.params; // userId
-        const { name, email, role, password, employeeCode, rfc, curp, phone, emergencyContact, salaryBase, salaryPeriod, shiftStartTime, earnCommission, commissionPercentage, productivityBonus, punctualityBonus, attendanceBonus } = req.body;
+        const { name, email, role, employeeCode, rfc, curp, phone, emergencyContact, salaryBase, salaryPeriod, shiftStartTime, earnCommission, commissionPercentage, productivityBonus, punctualityBonus, attendanceBonus } = req.body;
         const result = await prisma_1.prisma.$transaction(async (tx) => {
-            const dataToUpdate = { name, email, role };
-            if (password) {
-                dataToUpdate.passwordHash = await bcrypt_1.default.hash(password, 10);
-            }
+            const dataToUpdate = {};
+            if (name)
+                dataToUpdate.name = name;
+            if (email)
+                dataToUpdate.email = email;
+            if (role)
+                dataToUpdate.role = role;
             const user = await tx.user.update({
                 where: { id },
                 data: dataToUpdate

@@ -24,9 +24,16 @@ export const getWarehouses = async (_req: Request, res: Response, next: NextFunc
   }
 };
 
+import { checkTenantLimits } from '../utils/limits';
+import { tenantContext } from '../middleware/tenant.middleware';
+
 export const createWarehouse = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const data = warehouseSchema.parse(req.body);
+    const tenantId = tenantContext.getStore() as string;
+    
+    await checkTenantLimits(tenantId, 'LOCATIONS');
+    
     const location = await prisma.location.create({ data });
     res.status(201).json({ success: true, data: location });
   } catch (error) {

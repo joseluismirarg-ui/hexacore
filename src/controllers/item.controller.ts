@@ -11,6 +11,8 @@ import {
   ActualizarProductoSchema,
 } from '../validators/item.validator';
 import { NotFoundError, ConflictError } from '../lib/errors';
+import { tenantContext } from '../middleware/tenant.middleware';
+import { checkTenantLimits } from '../utils/limits';
 
 // =============================================================================
 // GET /api/v1/productos
@@ -87,6 +89,10 @@ export async function crearProducto(
 ): Promise<void> {
   try {
     const dto = CrearProductoSchema.parse(req.body);
+    const tenantId = tenantContext.getStore() as string;
+    
+    // Check SaaS limits before creating
+    await checkTenantLimits(tenantId, 'ITEMS');
 
     const exists = await prisma.item.findUnique({ where: { sku: dto.sku } });
     if (exists) throw new ConflictError(`El SKU '${dto.sku}' ya existe en el catálogo`);

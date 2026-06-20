@@ -25,23 +25,23 @@ function createPrismaClient() {
                         // Exclude models that don't have tenantId in their schema
                         if (tenantModels.has(model)) {
                             if (operation === 'findUnique' || operation === 'findFirst' || operation === 'findMany' || operation === 'update' || operation === 'updateMany' || operation === 'delete' || operation === 'deleteMany') {
-                                args.where = { ...args.where, tenantId };
+                                args.where = { tenantId, ...args.where };
                             }
                             else if (operation === 'create') {
-                                args.data = { ...args.data, tenantId };
+                                args.data = { tenantId, ...args.data };
                             }
                             else if (operation === 'createMany') {
                                 if (Array.isArray(args.data)) {
-                                    args.data = args.data.map(d => ({ ...d, tenantId }));
+                                    args.data = args.data.map((d) => ({ tenantId, ...d }));
                                 }
                                 else {
-                                    args.data = { ...args.data, tenantId };
+                                    args.data = { tenantId, ...args.data };
                                 }
                             }
                             else if (operation === 'upsert') {
-                                args.where = { ...args.where, tenantId };
-                                args.create = { ...args.create, tenantId };
-                                args.update = { ...args.update, tenantId };
+                                args.where = { tenantId, ...args.where };
+                                args.create = { tenantId, ...args.create };
+                                args.update = { tenantId, ...args.update };
                             }
                         }
                     }

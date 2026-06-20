@@ -1,3 +1,3 @@
 import { Request, Response, NextFunction } from 'express';
-export declare const getDashboardMetrics: (_req: Request, res: Response, next: NextFunction) => Promise<void>;
+export declare const getDashboardMetrics: (req: Request, res: Response, next: NextFunction) => Promise<void>;
 //# sourceMappingURL=dashboard.controller.d.ts.map

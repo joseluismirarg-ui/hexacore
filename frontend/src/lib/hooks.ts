@@ -85,23 +85,23 @@ export function useAsync<T>(fetcher: () => Promise<T>, autoFetch: boolean = true
 
 // ── Dashboard Hooks ──────────────────────────────────────────────────────────
 
-export function useDashboardMetrics(): AsyncState<DashboardMetric[]> {
+export function useDashboardMetrics(range: string = 'today'): AsyncState<DashboardMetric[]> {
   return useAsync(async () => {
-    const res = await api.get<{ metrics: DashboardMetric[] }>('/api/dashboard');
+    const res = await api.get<{ metrics: DashboardMetric[] }>(`/api/dashboard?range=${range}`);
     return res.data.metrics;
   });
 }
 
-export function useWeeklyFlow(): AsyncState<WeeklyFlowData[]> {
+export function useWeeklyFlow(range: string = 'today'): AsyncState<WeeklyFlowData[]> {
   return useAsync(async () => {
-    const res = await api.get<{ weekly: WeeklyFlowData[] }>('/api/dashboard');
+    const res = await api.get<{ weekly: WeeklyFlowData[] }>(`/api/dashboard?range=${range}`);
     return res.data.weekly;
   });
 }
 
-export function useAuditLogs(): AsyncState<AuditLog[]> {
+export function useAuditLogs(range: string = 'today'): AsyncState<AuditLog[]> {
   return useAsync(async () => {
-    const res = await api.get<{ logs: AuditLog[] }>('/api/dashboard');
+    const res = await api.get<{ logs: AuditLog[] }>(`/api/dashboard?range=${range}`);
     return res.data.logs;
   });
 }

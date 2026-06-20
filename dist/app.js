@@ -37,6 +37,7 @@ const subscription_routes_1 = __importDefault(require("./routes/subscription.rou
 const ticket_routes_1 = __importDefault(require("./routes/ticket.routes"));
 const analytics_routes_1 = __importDefault(require("./routes/analytics.routes"));
 const truck_routes_1 = __importDefault(require("./routes/truck.routes"));
+const driver_routes_1 = __importDefault(require("./routes/driver.routes"));
 const tenant_middleware_1 = require("./middleware/tenant.middleware");
 const swagger_1 = require("./docs/swagger");
 const webhook_routes_1 = __importDefault(require("./routes/webhook.routes"));
@@ -46,7 +47,18 @@ const app = (0, express_1.default)();
 // =============================================================================
 // MIDDLEWARES DE SEGURIDAD Y PARSING
 // =============================================================================
-app.use((0, helmet_1.default)());
+app.use((0, helmet_1.default)({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            connectSrc: ["'self'", "https://*.supabase.co", "https://xlqdteghltctdorrpfdo.supabase.co"],
+            imgSrc: ["'self'", "data:", "https:"],
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        },
+    },
+}));
 const corsOptions = {
     origin: process.env.NODE_ENV === 'production'
         ? (process.env.FRONTEND_URL ?? '').split(',').map((o) => o.trim())
@@ -113,13 +125,14 @@ app.use('/api/products', auth_middleware_1.authenticateToken, item_routes_1.defa
 app.use('/api/payments', auth_middleware_1.authenticateToken, payment_routes_1.default);
 app.use('/api/purchases', auth_middleware_1.authenticateToken, purchase_routes_1.default);
 app.use('/api/invoices', auth_middleware_1.authenticateToken, invoice_routes_1.default);
-app.use('/api/locations', auth_middleware_1.authenticateToken, location_routes_1.default);
+app.use('/api/warehouses', auth_middleware_1.authenticateToken, location_routes_1.default);
 app.use('/api/hr', auth_middleware_1.authenticateToken, hr_routes_1.default);
 app.use('/api/subscription', auth_middleware_1.authenticateToken, subscription_routes_1.default);
 app.use('/api/tickets', auth_middleware_1.authenticateToken, ticket_routes_1.default);
 app.use('/api/config', auth_middleware_1.authenticateToken, config_routes_1.default);
 app.use('/api/treasury', auth_middleware_1.authenticateToken, treasury_routes_1.default);
 app.use('/api/admin', auth_middleware_1.authenticateToken, admin_routes_1.default);
+app.use('/api/driver', driver_routes_1.default);
 app.use('/api/manufacturing', auth_middleware_1.authenticateToken, manufacturing_routes_1.default);
 app.use('/api/sales-orders', auth_middleware_1.authenticateToken, sales_order_routes_1.default);
 app.use('/api/logistics', auth_middleware_1.authenticateToken, logistics_routes_1.default);

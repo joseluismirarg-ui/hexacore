@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { DateRangeFilter, type DateRangeOption } from '@/components/ui/DateRangeFilter';
 import {
   DollarSign,
   Package,
@@ -121,10 +122,18 @@ function SectionError({ message }: { message: string }) {
 }
 
 export function Dashboard() {
-  const { data: metrics, loading: metricsLoading, error: metricsError } = useDashboardMetrics();
-  const { data: weeklyData, loading: chartLoading, error: chartError } = useWeeklyFlow();
-  const { data: logs, loading: logsLoading, error: logsError } = useAuditLogs();
+  const [dateRange, setDateRange] = useState<DateRangeOption>('today');
+  
+  const { data: metrics, loading: metricsLoading, error: metricsError, refetch: refetchMetrics } = useDashboardMetrics(dateRange);
+  const { data: weeklyData, loading: chartLoading, error: chartError, refetch: refetchWeekly } = useWeeklyFlow(dateRange);
+  const { data: logs, loading: logsLoading, error: logsError, refetch: refetchLogs } = useAuditLogs(dateRange);
   const { data: tenantConfig } = useTenantConfig();
+
+  useEffect(() => {
+    refetchMetrics();
+    refetchWeekly();
+    refetchLogs();
+  }, [dateRange, refetchMetrics, refetchWeekly, refetchLogs]);
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -138,9 +147,12 @@ export function Dashboard() {
             Resumen operativo — {tenantConfig?.industry ? `Giro: ${tenantConfig.industry} — ` : ''}{new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         </div>
-        <div className="flex items-center gap-2 rounded-lg border border-gray-700/40 bg-hc-surface px-3 py-2">
-          <Activity className="h-4 w-4 text-hc-emerald" />
-          <span className="text-xs font-medium text-gray-300">Sistema Operativo</span>
+        <div className="flex items-center gap-4">
+          <DateRangeFilter value={dateRange} onChange={setDateRange} />
+          <div className="flex items-center gap-2 rounded-lg border border-gray-700/40 bg-hc-surface px-3 py-2">
+            <Activity className="h-4 w-4 text-hc-emerald" />
+            <span className="text-xs font-medium text-gray-300">Sistema Operativo</span>
+          </div>
         </div>
       </div>
 
