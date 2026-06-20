@@ -30,6 +30,11 @@ function createPrismaClient() {
           const isTenantModel = tenantModels.has(model as string);
           const isSoftDeleteModel = softDeleteModels.has(model as string);
 
+          // DEBUG
+          if (model === 'Item' && operation === 'findMany') {
+            console.log(`[PRISMA_EXT] Item.findMany - tenantId from ALS:`, tenantId);
+          }
+
           // 1. Soft Deletes Logic
           if (isSoftDeleteModel) {
             if (operation === 'findUnique' || operation === 'findFirst' || operation === 'findMany') {
@@ -49,7 +54,8 @@ function createPrismaClient() {
 
           // 2. Tenant Injection Logic
           if (tenantId && isTenantModel) {
-            if (operation === 'findUnique' || operation === 'findFirst' || operation === 'findMany' || operation === 'update' || operation === 'updateMany' || operation === 'delete' || operation === 'deleteMany') {
+            if (['findUnique', 'findFirst', 'findMany', 'update', 'updateMany', 'delete', 'deleteMany', 'count', 'aggregate', 'groupBy'].includes(operation)) {
+              args = args || {};
               (args as any).where = { tenantId, ...(args as any).where };
             } else if (operation === 'create') {
               (args as any).data = { tenantId, ...(args as any).data };
