@@ -82,6 +82,14 @@ async function request<T>(
     );
   }
 
+  // Si la API no usa nuestro wrapper { success, data } (ej. Prisma raw JSON array)
+  if (json.success === undefined) {
+    return {
+      success: true,
+      data: json,
+    } as ApiResponse<T>;
+  }
+
   return json as ApiResponse<T>;
 }
 
