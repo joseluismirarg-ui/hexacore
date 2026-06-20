@@ -48,7 +48,7 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
 
     if (error || !user) {
       console.error('Supabase Auth Error:', error?.message);
-      res.status(403).json({ success: false, message: 'Token inválido o expirado' });
+      res.status(403).json({ success: false, message: 'Token inválido o expirado (SUPABASE_AUTH_ERROR)' });
       return;
     }
     
@@ -65,7 +65,7 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
     next();
   } catch (error) {
     console.error('Auth Exception:', error);
-    res.status(403).json({ success: false, message: 'Excepción de seguridad en token' });
+    res.status(403).json({ success: false, message: 'Excepción de seguridad en token (AUTH_EXCEPTION)' });
     return;
   }
 };
