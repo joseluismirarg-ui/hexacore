@@ -63,7 +63,7 @@ router.put('/tenants/:id/licenses', async (req: Request, res: Response, next: Ne
       });
     } else {
       license = await prisma.moduleLicense.update({
-        where: { id: license.id },
+        where: { tenantId },
         data: {
           ...(erpActive !== undefined && { erpActive }),
           ...(posActive !== undefined && { posActive }),
