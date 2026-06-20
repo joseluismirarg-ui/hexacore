@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
+import { BulkImportButton } from '@/components/ui/BulkImportButton';
 import { formatCurrency, productosApi, ApiError } from '@/lib/api';
 
 // ── Tipos locales ────────────────────────────────────────────────────────────
@@ -239,14 +240,20 @@ export function CatalogoProductos() {
             ERP · Gestión de SKUs, costos y precios
           </p>
         </div>
-        <Button
-          variant="primary"
-          size="md"
-          icon={Plus}
-          onClick={() => { setEditProduct(null); setModalOpen(true); }}
-        >
-          Nuevo Producto
-        </Button>
+        <div className="flex gap-3">
+          <BulkImportButton
+            endpoint="/api/bulk-import/items"
+            onSuccess={() => fetchProducts(search || undefined)}
+          />
+          <Button
+            variant="primary"
+            size="md"
+            icon={Plus}
+            onClick={() => { setEditProduct(null); setModalOpen(true); }}
+          >
+            Nuevo Producto
+          </Button>
+        </div>
       </div>
 
       {/* Search */}

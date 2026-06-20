@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Users, TrendingUp, AlertTriangle, Search, Plus, Edit2 } from 'lucide-react';
 import { DataTable, type Column } from '@/components/ui/DataTable';
+import { BulkImportButton } from '@/components/ui/BulkImportButton';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -223,9 +224,16 @@ export function DirectorioClientes() {
           <h1 className="text-2xl font-bold text-gray-50">Directorio de Clientes</h1>
           <p className="mt-1 text-sm text-gray-500">CRM · Cartera y crédito B2B</p>
         </div>
-        <Button variant="primary" onClick={handleCreate} className="gap-2 shrink-0">
-          <Plus className="h-4 w-4" /> Nuevo Cliente
-        </Button>
+        <div className="flex gap-3">
+          <BulkImportButton
+            endpoint="/api/bulk-import/customers"
+            onSuccess={() => refetch()}
+            label="Importar Clientes"
+          />
+          <Button variant="primary" onClick={handleCreate} className="gap-2 shrink-0">
+            <Plus className="h-4 w-4" /> Nuevo Cliente
+          </Button>
+        </div>
       </div>
 
       {/* KPIs */}
