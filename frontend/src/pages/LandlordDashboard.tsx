@@ -16,9 +16,9 @@ export default function LandlordDashboard() {
       if (res.success) {
         setData(res.data || res); // fallback just in case it returns raw json
       } else {
-        setError('Error fetching data');
+        setError(res.message || 'Error fetching data');
       }
-    } catch {
+    } catch (e: any) {
       setError('Network error');
     } finally {
       setLoading(false);
