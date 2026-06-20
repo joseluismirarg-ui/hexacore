@@ -3,7 +3,9 @@ import { MapPin, Phone, CheckCircle, Navigation } from 'lucide-react';
 import { useTMSStore } from '../store/useTMSStore';
 import { io, Socket } from 'socket.io-client';
 
-const socket: Socket = io(import.meta.env.PROD ? '' : 'http://localhost:3000');
+import { BASE_URL } from '../lib/api';
+
+const socket: Socket = io(BASE_URL);
 
 export default function DriverTMS() {
   const { stops, markStopAs, loadTrip, syncOfflineData } = useTMSStore();

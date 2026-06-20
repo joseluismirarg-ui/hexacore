@@ -9,6 +9,8 @@ interface Notification {
   time: Date;
 }
 
+import { BASE_URL } from '../lib/api';
+
 export function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -16,7 +18,7 @@ export function NotificationBell() {
 
   useEffect(() => {
     // Conectar a socket.io
-    const socket: Socket = io(import.meta.env.VITE_API_URL || 'http://localhost:3000');
+    const socket: Socket = io(BASE_URL);
 
     socket.on('connect', () => {
       console.log('Connectado a WebSockets');
