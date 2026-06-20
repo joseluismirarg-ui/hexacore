@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useAsync } from '@/lib/hooks';
@@ -22,6 +22,8 @@ import {
   Landmark,
   Shield,
   Truck,
+  Menu,
+  ChevronLeft,
 } from 'lucide-react';
 
 export function Sidebar() {
@@ -29,6 +31,18 @@ export function Sidebar() {
   const navigate = useNavigate();
   const { data: licenseData } = useAsync(() => api.get('/api/admin/licenses'), true);
   const license: any = (licenseData as any)?.data || {};
+
+  // Colapsado por defecto en móviles
+  const [isCollapsed, setIsCollapsed] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) setIsCollapsed(true);
+      else setIsCollapsed(false);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -101,14 +115,28 @@ export function Sidebar() {
   ];
 
   return (
-    <aside className="flex h-screen w-64 flex-col border-r border-gray-700/40 bg-hc-surface-dark overflow-y-auto">
-      {/* ── Logo ─────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3 border-b border-gray-700/40 px-5 py-5 sticky top-0 bg-hc-surface-dark z-10">
-        <img src="/logo-full.png" alt="HEXA CORE" className="h-8 w-auto" />
+    <aside 
+      className={`flex h-screen flex-col border-r border-gray-700/40 bg-hc-surface-dark overflow-y-auto transition-all duration-300 ${
+        isCollapsed ? 'w-20' : 'w-64'
+      }`}
+    >
+      {/* ── Logo & Toggle ─────────────────────────────────────────────────── */}
+      <div 
+        className={`flex items-center border-b border-gray-700/40 px-5 py-5 sticky top-0 bg-hc-surface-dark z-10 cursor-pointer ${
+          isCollapsed ? 'justify-center' : 'justify-between'
+        }`}
+        onClick={() => setIsCollapsed(!isCollapsed)}
+      >
+        {!isCollapsed && (
+          <img src="/logo-full.png" alt="HEXA CORE" className="h-8 w-auto" />
+        )}
+        <button className="text-gray-400 hover:text-white transition-colors">
+          {isCollapsed ? <Menu size={24} /> : <ChevronLeft size={24} />}
+        </button>
       </div>
 
       {/* ── Navigation ───────────────────────────────────────────── */}
-      <nav className="flex-1 px-3 py-4 space-y-5">
+      <nav className={`flex-1 py-4 space-y-5 ${isCollapsed ? 'px-2' : 'px-3'}`}>
         {navGroups
           .filter(group => !group.allowedRoles || (user && group.allowedRoles.includes(user.role)))
           .map((group) => {
@@ -125,17 +153,23 @@ export function Sidebar() {
 
             return (
               <div key={group.label}>
-                <p className="mb-2 px-2 text-xxs font-semibold uppercase tracking-widest text-gray-500">
-                  {group.label}
-                </p>
-                <div className="space-y-0.5">
+                {!isCollapsed && (
+                  <p className="mb-2 px-2 text-xxs font-semibold uppercase tracking-widest text-gray-500">
+                    {group.label}
+                  </p>
+                )}
+                {isCollapsed && <div className="h-4"></div> /* Espaciador visual */}
+                <div className="space-y-1">
                   {groupItems.map(({ to, label, icon: Icon }) => (
                     <NavLink
                       key={to}
                       to={to}
                       end={to === '/'}
+                      title={isCollapsed ? label : undefined}
                       className={({ isActive }) =>
-                        `group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+                        `group flex items-center rounded-lg font-medium transition-all duration-150 ${
+                          isCollapsed ? 'justify-center py-3' : 'gap-3 px-3 py-2.5 text-sm'
+                        } ${
                           isActive
                             ? 'bg-hc-cobalt/15 text-hc-cobalt-light shadow-sm'
                             : 'text-gray-400 hover:bg-hc-surface-light/50 hover:text-gray-200'
@@ -145,13 +179,15 @@ export function Sidebar() {
                       {({ isActive }) => (
                         <>
                           <Icon
-                            className={`h-[18px] w-[18px] flex-shrink-0 ${
+                            className={`flex-shrink-0 ${
+                              isCollapsed ? 'h-[22px] w-[22px]' : 'h-[18px] w-[18px]'
+                            } ${
                               isActive ? 'text-hc-cobalt-light' : 'text-gray-500 group-hover:text-gray-300'
                             }`}
                             strokeWidth={isActive ? 2.5 : 2}
                           />
-                          <span className="truncate">{label}</span>
-                          {isActive && (
+                          {!isCollapsed && <span className="truncate">{label}</span>}
+                          {!isCollapsed && isActive && (
                             <span className="ml-auto h-1.5 w-1.5 flex-shrink-0 rounded-full bg-hc-cobalt-light" />
                           )}
                         </>
@@ -165,23 +201,31 @@ export function Sidebar() {
       </nav>
 
       {/* ── User Footer ──────────────────────────────────────────── */}
-      <div className="border-t border-gray-700/40 px-4 py-4 sticky bottom-0 bg-hc-surface-dark">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-hc-cobalt/20 text-xs font-bold text-hc-cobalt-light uppercase">
-            {user?.name?.substring(0, 2) || 'US'}
-          </div>
+      <div className={`border-t border-gray-700/40 py-4 sticky bottom-0 bg-hc-surface-dark flex items-center ${
+        isCollapsed ? 'justify-center px-2 flex-col gap-3' : 'px-4 gap-3'
+      }`}>
+        <div 
+          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-hc-cobalt/20 text-xs font-bold text-hc-cobalt-light uppercase cursor-pointer"
+          title={isCollapsed ? user?.name : undefined}
+          onClick={() => isCollapsed && setIsCollapsed(false)}
+        >
+          {user?.name?.substring(0, 2) || 'US'}
+        </div>
+        {!isCollapsed && (
           <div className="flex-1 min-w-0">
             <p className="truncate text-sm font-medium text-gray-200">{user?.name || 'Usuario'}</p>
             <p className="truncate text-xxs text-gray-500">{user?.role || 'Guest'}</p>
           </div>
-          <button
-            onClick={handleLogout}
-            className="rounded-md p-1.5 text-gray-500 transition-colors hover:bg-hc-surface-light hover:text-gray-300"
-            title="Cerrar sesión"
-          >
-            <LogOut className="h-4 w-4" />
-          </button>
-        </div>
+        )}
+        <button
+          onClick={handleLogout}
+          className={`rounded-md p-1.5 text-gray-500 transition-colors hover:bg-hc-surface-light hover:text-gray-300 ${
+            isCollapsed ? 'w-full flex justify-center' : ''
+          }`}
+          title="Cerrar sesión"
+        >
+          <LogOut className="h-5 w-5" />
+        </button>
       </div>
     </aside>
   );
