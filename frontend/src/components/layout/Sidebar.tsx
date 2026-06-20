@@ -52,7 +52,7 @@ export function Sidebar() {
   const navGroups = [
     {
       label: 'Principal',
-      allowedRoles: ['ADMIN', 'VENDEDOR', 'ALMACENISTA', 'RH'],
+      allowedRoles: ['ADMIN', 'VENDEDOR', 'ALMACENISTA', 'RH', 'SUPERADMIN'],
       items: [
         { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { to: '/reportes', label: 'Reportes Avanzados', icon: FileBarChart, roles: ['ADMIN'], moduleKey: 'reportsActive' },
@@ -61,7 +61,7 @@ export function Sidebar() {
     },
     {
       label: 'Ventas',
-      allowedRoles: ['ADMIN', 'VENDEDOR'],
+      allowedRoles: ['ADMIN', 'VENDEDOR', 'SUPERADMIN'],
       items: [
         { to: '/pos', label: 'Punto de Venta', icon: ShoppingCart, moduleKey: 'posActive' },
         { to: '/consignaciones', label: 'Consignaciones', icon: PackageSearch, roles: ['ADMIN'], moduleKey: 'posActive' },
@@ -71,7 +71,7 @@ export function Sidebar() {
     },
     {
       label: 'Finanzas',
-      allowedRoles: ['ADMIN'],
+      allowedRoles: ['ADMIN', 'SUPERADMIN'],
       items: [
         { to: '/cxc', label: 'Cuentas por Cobrar', icon: CreditCard },
         { to: '/cxp', label: 'Cuentas por Pagar', icon: ShoppingBag },
@@ -80,7 +80,7 @@ export function Sidebar() {
     },
     {
       label: 'Inventario & Manufactura',
-      allowedRoles: ['ADMIN', 'ALMACENISTA', 'VENDEDOR'],
+      allowedRoles: ['ADMIN', 'ALMACENISTA', 'VENDEDOR', 'SUPERADMIN'],
       items: [
         { to: '/almacenes', label: 'Gestión Almacenes', icon: Warehouse, roles: ['ADMIN', 'ALMACENISTA'] },
         { to: '/kardex', label: 'Logística Kardex', icon: ArrowLeftRight, roles: ['ADMIN', 'ALMACENISTA', 'VENDEDOR'], moduleKey: 'logisticsActive' },
@@ -90,14 +90,14 @@ export function Sidebar() {
     },
     {
       label: 'Logística & TMS',
-      allowedRoles: ['ADMIN'],
+      allowedRoles: ['ADMIN', 'SUPERADMIN'],
       items: [
         { to: '/tms', label: 'Control TMS (Trucks)', icon: Truck, roles: ['ADMIN'] },
       ],
     },
     {
       label: 'RH & CRM',
-      allowedRoles: ['ADMIN', 'VENDEDOR', 'RH', 'ALMACENISTA'],
+      allowedRoles: ['ADMIN', 'VENDEDOR', 'RH', 'ALMACENISTA', 'SUPERADMIN'],
       items: [
         { to: '/hr', label: 'Recursos Humanos', icon: UserCheck, moduleKey: 'hrActive' },
         { to: '/vendedores', label: 'Directorio Vendedores', icon: Users, roles: ['ADMIN', 'RH'] },
@@ -106,10 +106,12 @@ export function Sidebar() {
       ],
     },
     {
-      label: 'Administración',
-      allowedRoles: ['ADMIN'],
+      label: 'Super Administración',
+      allowedRoles: ['SUPERADMIN'],
       items: [
-        { to: '/superadmin', label: 'Panel Super Admin', icon: Shield, roles: ['ADMIN'], tenantIds: ['default-tenant'] },
+        { to: '/superadmin', label: 'Panel Super Admin', icon: Shield },
+        { to: '/landlord-dashboard', label: 'Monitor Infraestructura', icon: LayoutDashboard },
+        { to: '/soporte-admin', label: 'Soporte Técnico', icon: Settings },
       ],
     },
   ];
@@ -143,8 +145,8 @@ export function Sidebar() {
             const groupItems = group.items.filter(item => {
               const itemRoles = (item as any).roles;
               const itemTenants = (item as any).tenantIds;
-              const roleAllowed = !itemRoles || (user && itemRoles.includes(user.role));
-              const tenantAllowed = !itemTenants || (user && itemTenants.includes(user.tenantId));
+              const roleAllowed = !itemRoles || (user && (itemRoles.includes(user.role) || user.role === 'SUPERADMIN'));
+              const tenantAllowed = !itemTenants || (user && (itemTenants.includes(user.tenantId) || user.role === 'SUPERADMIN'));
               const licenseAllowed = !(item as any).moduleKey || license[(item as any).moduleKey] === true || Object.keys(license).length === 0;
               return roleAllowed && tenantAllowed && licenseAllowed;
             });

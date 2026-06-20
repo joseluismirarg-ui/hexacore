@@ -19,9 +19,11 @@ async function main() {
     await prisma.$executeRaw`UPDATE auth.users SET raw_user_meta_data = jsonb_set(COALESCE(raw_user_meta_data, '{}'::jsonb), '{tenantId}', '"tenant-demo"') WHERE email = 'demouser@hexacore.com'`;
   }
 
-  console.log('🏢 Creando Tenant...');
-  await prisma.tenant.create({
-    data: {
+  console.log('🏢 Creando o actualizando Tenant...');
+  await prisma.tenant.upsert({
+    where: { id: tId },
+    update: {},
+    create: {
       id: tId,
       name: 'ElectroGlobal S.A. de C.V.',
       industry: 'ELECTRONICS',
