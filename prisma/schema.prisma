@@ -989,7 +989,7 @@ model LogisticsClient {
 
 model Truck {
   id           String      @id @default(cuid())
-  plate        String      @unique
+  plate        String
   make         String?
   model        String?
   year         Int?
@@ -1003,13 +1003,14 @@ model Truck {
   drivers Driver[] @relation("DriverCurrentTruck")
   trips   Trip[]
 
+  @@unique([tenantId, plate])
   @@map("trucks")
 }
 
 model Driver {
   id            String  @id @default(cuid())
   name          String
-  licenseNumber String  @unique @map("license_number")
+  licenseNumber String  @map("license_number")
   phone         String?
   isAvailable   Boolean @default(true) @map("is_available")
 
@@ -1022,12 +1023,15 @@ model Driver {
 
   trips Trip[]
 
+  @@unique([tenantId, licenseNumber])
   @@map("drivers")
 }
 
 model Trip {
   id                 String    @id @default(cuid())
-  tripId             String    @unique @map("trip_id") // Auto-generated human readable ID (e.g., TRP-1001)
+  tripId             String    @map("trip_id") // Auto-generated human readable ID (e.g., TRP-1001)
+  estimatedRevenue   Decimal   @default(0) @db.Decimal(14, 4) @map("estimated_revenue")
+  driverFee          Decimal   @default(0) @db.Decimal(14, 4) @map("driver_fee")
   cargoDescription   String    @map("cargo_description")
   departureDateTime  DateTime  @default(now()) @map("departure_date_time")
   arrivalDateTime    DateTime? @map("arrival_date_time")
@@ -1049,6 +1053,7 @@ model Trip {
   expenses TripExpense[]
   stops    TripStop[]
 
+  @@unique([tenantId, tripId])
   @@map("trips")
 }
 

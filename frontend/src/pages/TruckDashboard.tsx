@@ -20,6 +20,9 @@ export default function TruckDashboard() {
   const [expenseTripId, setExpenseTripId] = useState<string | null>(null);
   const [completeTripId, setCompleteTripId] = useState<string | null>(null);
 
+  // Array dinámico para las paradas del viaje
+  const [dispatchStops, setDispatchStops] = useState([{ customerName: '', address: '', phone: '' }]);
+
   const { data: trucksData, execute: reloadTrucks } = useAsync(() => api.get('/api/trucks'), true);
   const { data: driversData, execute: reloadDrivers } = useAsync(() => api.get('/api/trucks/drivers'), true);
   const { data: clientsData, execute: reloadClients } = useAsync(() => api.get('/api/trucks/clients'), true);
@@ -74,9 +77,15 @@ export default function TruckDashboard() {
   const handleDispatchTrip = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    const payload = Object.fromEntries(formData);
+    
+    // Adjuntamos el array de paradas
+    payload.stops = dispatchStops as any;
+
     try {
-      await api.post('/api/trucks/trips/dispatch', Object.fromEntries(formData));
+      await api.post('/api/trucks/trips/dispatch', payload);
       setShowDispatchModal(false);
+      setDispatchStops([{ customerName: '', address: '', phone: '' }]); // Reset
       reloadTrips();
       reloadTrucks();
       reloadDrivers();
@@ -432,9 +441,21 @@ export default function TruckDashboard() {
                        <span className="text-sm text-gray-300">{trip.driver?.name}</span>
                      </div>
                    </div>
-                   <div className="text-right">
-                     <p className="text-xs text-gray-500">Gastos Acumulados</p>
-                     <p className="text-lg font-mono text-gray-200">{formatCurrency(totalExp)}</p>
+                   <div className="flex gap-8 text-right">
+                     <div>
+                       <p className="text-xs text-gray-500">Facturación Estimada</p>
+                       <p className="text-lg font-mono text-gray-200">{formatCurrency(Number(trip.estimatedRevenue || 0))}</p>
+                     </div>
+                     <div>
+                       <p className="text-xs text-gray-500">Gastos Acumulados</p>
+                       <p className="text-lg font-mono text-red-300">{formatCurrency(totalExp)}</p>
+                     </div>
+                     <div>
+                       <p className="text-xs text-gray-500">Rentabilidad Actual</p>
+                       <p className={`text-lg font-mono font-bold ${Number(trip.estimatedRevenue || 0) - totalExp > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                         {formatCurrency(Number(trip.estimatedRevenue || 0) - totalExp)}
+                       </p>
+                     </div>
                    </div>
                  </div>
                </div>
@@ -449,19 +470,23 @@ export default function TruckDashboard() {
           <h2 className="text-lg font-medium text-gray-200 mb-4">Historial de Viajes Completados</h2>
           
           <div className="rounded-xl border border-gray-700/50 bg-hc-surface-dark overflow-hidden">
-             <table className="w-full text-left text-sm text-gray-300">
+              <table className="w-full text-left text-sm text-gray-300">
                <thead>
                  <tr className="text-gray-500 border-b border-gray-700/50 bg-gray-800/40">
                    <th className="p-4">Viaje / Cliente</th>
                    <th className="p-4">Ruta</th>
                    <th className="p-4">Fechas</th>
-                   <th className="p-4">Camión/Chofer</th>
-                   <th className="p-4 text-right">Costo Op. Total</th>
+                   <th className="p-4 text-right">Facturación</th>
+                   <th className="p-4 text-right">Costos Op.</th>
+                   <th className="p-4 text-right">Margen Bruto</th>
                  </tr>
                </thead>
                <tbody className="divide-y divide-gray-700/20">
                  {trips.filter((t: any) => t.arrivalDateTime).map((trip: any) => {
                     const totalExp = (trip.expenses || []).reduce((acc: number, ex: any) => acc + Number(ex.amount), 0);
+                    const revenue = Number(trip.estimatedRevenue || 0);
+                    const margin = revenue - totalExp;
+                    const marginColor = margin > 0 ? 'text-green-400' : margin < 0 ? 'text-red-400' : 'text-gray-400';
                     return (
                       <tr key={trip.id} className="hover:bg-gray-800/20">
                         <td className="p-4">
@@ -476,18 +501,20 @@ export default function TruckDashboard() {
                            {formatTimestamp(trip.departureDateTime)}<br/>
                            {formatTimestamp(trip.arrivalDateTime)}
                         </td>
-                        <td className="p-4 text-xs">
-                           <span className="text-gray-200">{trip.truck?.plate}</span><br/>
-                           <span className="text-gray-500">{trip.driver?.name}</span>
+                        <td className="p-4 text-right font-mono text-gray-200">
+                           {formatCurrency(revenue)}
                         </td>
-                        <td className="p-4 text-right font-mono text-hc-cobalt-light font-medium">
+                        <td className="p-4 text-right font-mono text-red-300">
                            {formatCurrency(totalExp)}
+                        </td>
+                        <td className={`p-4 text-right font-mono font-bold ${marginColor}`}>
+                           {formatCurrency(margin)}
                         </td>
                       </tr>
                     );
                  })}
                  {trips.filter((t: any) => t.arrivalDateTime).length === 0 && (
-                   <tr><td colSpan={5} className="p-8 text-center text-gray-500">No hay historial de viajes completados.</td></tr>
+                   <tr><td colSpan={6} className="p-8 text-center text-gray-500">No hay historial de viajes completados.</td></tr>
                  )}
                </tbody>
              </table>
@@ -536,18 +563,21 @@ export default function TruckDashboard() {
       )}
 
       {showDispatchModal && (
-        <Modal title="Despachar Nuevo Viaje" onClose={() => setShowDispatchModal(false)}>
+        <Modal title="Despachar Nuevo Viaje (Armador de Rutas)" onClose={() => setShowDispatchModal(false)}>
           <form onSubmit={handleDispatchTrip} className="space-y-4 max-h-[80vh] overflow-y-auto pr-2">
              <div className="grid grid-cols-2 gap-3">
                <div><label className="text-xs text-gray-400">Folio del Viaje</label><input required name="tripId" placeholder="EJ: VIAJE-101" className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white" /></div>
                <div><label className="text-xs text-gray-400">Fecha/Hora Salida</label><input type="datetime-local" name="departureDateTime" className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white" /></div>
              </div>
              
-             <div><label className="text-xs text-gray-400">Cliente Logístico / Destino</label>
-                <select required name="clientId" className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white">
-                  <option value="">Seleccione Cliente...</option>
-                  {clients.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+             <div className="grid grid-cols-2 gap-3">
+               <div><label className="text-xs text-gray-400">Cliente Logístico (Principal)</label>
+                  <select required name="clientId" className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white">
+                    <option value="">Seleccione Cliente...</option>
+                    {clients.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+               </div>
+               <div><label className="text-xs text-gray-400 text-hc-cobalt-light font-bold">Monto de Facturación / Flete ($)</label><input required type="number" step="0.01" name="estimatedRevenue" placeholder="0.00" className="w-full bg-gray-800 border border-hc-cobalt/50 rounded p-2 text-sm text-white focus:border-hc-cobalt" /></div>
              </div>
 
              <div className="grid grid-cols-2 gap-3">
@@ -565,32 +595,68 @@ export default function TruckDashboard() {
                </div>
              </div>
 
-             <div><label className="text-xs text-gray-400">Dirección Origen</label><input required name="originAddress" placeholder="De dónde sale..." className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white" /></div>
-             <div><label className="text-xs text-gray-400">Dirección Destino</label><input required name="destinationAddress" placeholder="A dónde llega..." className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white" /></div>
-             
+             <div><label className="text-xs text-gray-400">Dirección Origen</label><input required name="originAddress" placeholder="De dónde sale el camión..." className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white" /></div>
+             <div><label className="text-xs text-gray-400">Dirección Destino (Última parada o Regreso)</label><input required name="destinationAddress" placeholder="A dónde llega al final..." className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white" /></div>
              <div><label className="text-xs text-gray-400">Descripción de Carga</label><textarea required name="cargoDescription" rows={2} className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white"></textarea></div>
 
-             <button type="submit" className="w-full bg-hc-cobalt text-white py-2 rounded font-medium mt-4">Iniciar Despacho de Viaje</button>
+             {/* Dynamic Stops Array */}
+             <div className="mt-6 border-t border-gray-700 pt-4">
+               <div className="flex justify-between items-center mb-2">
+                 <h3 className="text-sm font-semibold text-gray-200">Paradas de Entrega (Ruta)</h3>
+                 <button 
+                   type="button" 
+                   onClick={() => setDispatchStops([...dispatchStops, { customerName: '', address: '', phone: '' }])}
+                   className="text-xs bg-hc-surface border border-gray-600 px-2 py-1 rounded text-gray-300 hover:text-white"
+                 >+ Añadir Parada</button>
+               </div>
+               
+               {dispatchStops.map((stop, index) => (
+                 <div key={index} className="bg-gray-800/60 p-3 rounded mb-3 border border-gray-700 relative">
+                   <div className="absolute top-2 right-2 flex gap-2">
+                     <span className="text-xs text-gray-500 font-mono">#{index + 1}</span>
+                     {dispatchStops.length > 1 && (
+                       <button type="button" onClick={() => setDispatchStops(dispatchStops.filter((_, i) => i !== index))} className="text-red-400 hover:text-red-300">
+                         <X size={14} />
+                       </button>
+                     )}
+                   </div>
+                   <div className="space-y-2 pr-6">
+                     <input required placeholder="Nombre del Cliente (Ej. Abarrotes Pepe)" value={stop.customerName} onChange={(e) => {
+                       const newStops = [...dispatchStops]; newStops[index].customerName = e.target.value; setDispatchStops(newStops);
+                     }} className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" />
+                     <input required placeholder="Dirección Exacta de la Entrega" value={stop.address} onChange={(e) => {
+                       const newStops = [...dispatchStops]; newStops[index].address = e.target.value; setDispatchStops(newStops);
+                     }} className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" />
+                     <input placeholder="Teléfono de Contacto (Opcional)" value={stop.phone} onChange={(e) => {
+                       const newStops = [...dispatchStops]; newStops[index].phone = e.target.value; setDispatchStops(newStops);
+                     }} className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" />
+                   </div>
+                 </div>
+               ))}
+             </div>
+
+             <button type="submit" className="w-full bg-hc-cobalt text-white py-3 rounded font-bold mt-6 shadow-lg hover:bg-hc-cobalt-light transition-all">Iniciar Despacho y Asignar Ruta</button>
           </form>
         </Modal>
       )}
 
       {expenseTripId && (
-        <Modal title="Registrar Gasto Operativo" onClose={() => setExpenseTripId(null)}>
+        <Modal title="Registrar Gasto / Imprevisto Operativo" onClose={() => setExpenseTripId(null)}>
           <form onSubmit={handleAddExpense} className="space-y-4">
              <div><label className="text-xs text-gray-400">Tipo de Gasto</label>
                 <select required name="expenseType" className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white">
                   <option value="FUEL">Combustible / Gasolina</option>
-                  <option value="TOLL">Peajes / Casetas</option>
-                  <option value="MAINTENANCE">Mantenimiento / Refacciones</option>
-                  <option value="OTHER">Viáticos / Otros</option>
+                  <option value="TOLLS">Peajes / Casetas</option>
+                  <option value="PER_DIEM">Viáticos / Comidas</option>
+                  <option value="MAINTENANCE">Mantenimiento Preventivo / Refacciones</option>
+                  <option value="OTHER">Imprevistos Operativos (Multas, Desvíos, Ponchaduras)</option>
                 </select>
              </div>
              <div><label className="text-xs text-gray-400">Monto del Gasto</label><input required type="number" step="0.01" name="amount" className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white" /></div>
              <div><label className="text-xs text-gray-400">Moneda</label><input required name="currency" defaultValue="MXN" className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white" /></div>
-             <div><label className="text-xs text-gray-400">Concepto / Notas (Opcional)</label><textarea name="notes" rows={2} className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white"></textarea></div>
+             <div><label className="text-xs text-gray-400">Concepto / Notas (Opcional)</label><textarea name="notes" placeholder="Describa el imprevisto o detalle..." rows={2} className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white"></textarea></div>
 
-             <button type="submit" className="w-full bg-hc-cobalt text-white py-2 rounded font-medium mt-4">Guardar Gasto en Viaje</button>
+             <button type="submit" className="w-full bg-hc-cobalt text-white py-2 rounded font-medium mt-4">Registrar y Descontar de Rentabilidad</button>
           </form>
         </Modal>
       )}

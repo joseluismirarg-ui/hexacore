@@ -134,7 +134,10 @@ export class TruckController {
           truck: true,
           driver: true,
           client: true,
-          expenses: true
+          expenses: true,
+          stops: {
+            orderBy: { sequence: 'asc' }
+          }
         },
         orderBy: { departureDateTime: 'desc' }
       });
@@ -145,14 +148,25 @@ export class TruckController {
   static async dispatchTrip(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const tenantId = tenantContext.getStore() || (req as any).user?.tenantId;
-      const { tripId, cargoDescription, originAddress, destinationAddress, truckId, driverId, clientId, departureDateTime } = req.body;
+      const { tripId, cargoDescription, originAddress, destinationAddress, truckId, driverId, clientId, departureDateTime, estimatedRevenue, stops } = req.body;
 
       const result = await prisma.$transaction(async (tx) => {
         const trip = await tx.trip.create({
           data: {
             tripId, cargoDescription, originAddress, destinationAddress,
             truckId, driverId, clientId, tenantId,
-            departureDateTime: departureDateTime ? new Date(departureDateTime) : new Date()
+            estimatedRevenue: estimatedRevenue ? Number(estimatedRevenue) : 0,
+            departureDateTime: departureDateTime ? new Date(departureDateTime) : new Date(),
+            stops: stops && Array.isArray(stops) ? {
+              create: stops.map((stop: any, index: number) => ({
+                sequence: index + 1,
+                customerName: stop.customerName,
+                address: stop.address,
+                phone: stop.phone,
+                lat: stop.lat ? Number(stop.lat) : null,
+                lng: stop.lng ? Number(stop.lng) : null,
+              }))
+            } : undefined
           }
         });
 
