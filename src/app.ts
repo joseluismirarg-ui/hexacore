@@ -109,8 +109,7 @@ app.use((req: Request, _res: Response, next: NextFunction): void => {
   next();
 });
 
-app.use(tenantMiddleware);
-
+// app.use(tenantMiddleware); // Movido a nivel de ruta para ejecutarse DESPUÉS de authenticateToken
 // =============================================================================
 // HEALTH CHECK
 // =============================================================================
@@ -132,32 +131,32 @@ app.use('/api/auth', authRoutes);
 // =============================================================================
 // RUTAS DE LA API — ERP v2.0 (PROTEGIDAS)
 // =============================================================================
-app.use('/api/transactions', authenticateToken, transactionRoutes);
-app.use('/api/collections', authenticateToken, cobranzaRoutes);
-app.use('/api/dashboard', authenticateToken, dashboardRoutes);
-app.use('/api/customers', authenticateToken, clienteRoutes);
-app.use('/api/users', authenticateToken, usuarioRoutes);
-app.use('/api/inventory', authenticateToken, inventarioRoutes);
-app.use('/api/products', authenticateToken, productRoutes);
-app.use('/api/payments', authenticateToken, paymentRoutes);
-app.use('/api/purchases', authenticateToken, purchaseRoutes);
-app.use('/api/invoices', authenticateToken, invoiceRoutes);
-app.use('/api/warehouses', authenticateToken, locationRoutes);
-app.use('/api/hr', authenticateToken, hrRoutes);
-app.use('/api/subscription', authenticateToken, subscriptionRoutes);
-app.use('/api/tickets', authenticateToken, ticketRoutes);
-app.use('/api/config', authenticateToken, configRoutes);
-app.use('/api/treasury', authenticateToken, treasuryRoutes);
-app.use('/api/admin', authenticateToken, requireSuperAdmin, adminRoutes);
+app.use('/api/transactions', authenticateToken, tenantMiddleware, transactionRoutes);
+app.use('/api/collections', authenticateToken, tenantMiddleware, cobranzaRoutes);
+app.use('/api/dashboard', authenticateToken, tenantMiddleware, dashboardRoutes);
+app.use('/api/customers', authenticateToken, tenantMiddleware, clienteRoutes);
+app.use('/api/users', authenticateToken, tenantMiddleware, usuarioRoutes);
+app.use('/api/inventory', authenticateToken, tenantMiddleware, inventarioRoutes);
+app.use('/api/products', authenticateToken, tenantMiddleware, productRoutes);
+app.use('/api/payments', authenticateToken, tenantMiddleware, paymentRoutes);
+app.use('/api/purchases', authenticateToken, tenantMiddleware, purchaseRoutes);
+app.use('/api/invoices', authenticateToken, tenantMiddleware, invoiceRoutes);
+app.use('/api/warehouses', authenticateToken, tenantMiddleware, locationRoutes);
+app.use('/api/hr', authenticateToken, tenantMiddleware, hrRoutes);
+app.use('/api/subscription', authenticateToken, tenantMiddleware, subscriptionRoutes);
+app.use('/api/tickets', authenticateToken, tenantMiddleware, ticketRoutes);
+app.use('/api/config', authenticateToken, tenantMiddleware, configRoutes);
+app.use('/api/treasury', authenticateToken, tenantMiddleware, treasuryRoutes);
+app.use('/api/admin', authenticateToken, requireSuperAdmin, tenantMiddleware, adminRoutes);
 app.use('/api/driver', driverRoutes);
-app.use('/api/manufacturing', authenticateToken, manufacturingRoutes);
-app.use('/api/sales-orders', authenticateToken, salesOrderRoutes);
-app.use('/api/logistics', authenticateToken, logisticsRoutes);
-app.use('/api/tenants', authenticateToken, tenantRoutes);
-app.use('/api/landlord', authenticateToken, requireSuperAdmin, landlordRoutes);
-app.use('/api/v1/superadmin', authenticateToken, requireSuperAdmin, superAdminRoutes);
+app.use('/api/manufacturing', authenticateToken, tenantMiddleware, manufacturingRoutes);
+app.use('/api/sales-orders', authenticateToken, tenantMiddleware, salesOrderRoutes);
+app.use('/api/logistics', authenticateToken, tenantMiddleware, logisticsRoutes);
+app.use('/api/tenants', authenticateToken, tenantMiddleware, tenantRoutes);
+app.use('/api/landlord', authenticateToken, requireSuperAdmin, tenantMiddleware, landlordRoutes);
+app.use('/api/v1/superadmin', authenticateToken, requireSuperAdmin, tenantMiddleware, superAdminRoutes);
 app.use('/api/billing', billingRoutes); // Público por webhook
-app.use('/api/analytics', authenticateToken, analyticsRoutes);
+app.use('/api/analytics', authenticateToken, tenantMiddleware, analyticsRoutes);
 app.use('/api/trucks', authenticateToken, truckRoutes);
 app.use('/api/bulk-import', authenticateToken, bulkImportRoutes);
 app.use('/api/cxc', authenticateToken, cxcRoutes);
