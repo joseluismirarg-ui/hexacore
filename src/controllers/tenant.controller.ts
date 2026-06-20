@@ -73,7 +73,9 @@ export const getCurrentTenantConfig = async (req: Request, res: Response): Promi
        return res.status(401).json({ error: 'No tenant found in context' });
     }
 
-    if (tenantId === 'default-tenant') {
+    const role = (req as any).user?.role;
+
+    if (tenantId === 'default-tenant' || role === 'SUPERADMIN') {
       res.json({ id: 'default-tenant', name: 'Super Admin Global', industry: 'GENERAL', status: 'ACTIVE' });
       return;
     }

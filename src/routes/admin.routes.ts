@@ -14,8 +14,9 @@ const router = Router();
 router.get('/licenses', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const tenantId = (req as any).user?.tenantId || 'default-tenant';
+    const role = (req as any).user?.role;
     
-    if (tenantId === 'default-tenant') {
+    if (tenantId === 'default-tenant' || role === 'SUPERADMIN') {
       res.json({
         success: true,
         data: {

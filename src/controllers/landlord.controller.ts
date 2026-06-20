@@ -5,7 +5,7 @@ import { clearTenantCache } from '../middleware/tenant.middleware';
 export const getLandlordDashboard = async (req: Request, res: Response): Promise<any> => {
   try {
     const user = (req as any).user;
-    if (user?.tenantId !== 'default-tenant' || user?.role !== 'ADMIN') {
+    if (user?.role !== 'SUPERADMIN') {
       return res.status(403).json({ error: 'Acceso denegado. Solo cuenta maestra.' });
     }
 
@@ -44,7 +44,7 @@ export const getLandlordDashboard = async (req: Request, res: Response): Promise
 export const setTenantStatus = async (req: Request, res: Response): Promise<any> => {
   try {
     const user = (req as any).user;
-    if (user?.tenantId !== 'default-tenant' || user?.role !== 'ADMIN') {
+    if (user?.role !== 'SUPERADMIN') {
       return res.status(403).json({ error: 'Acceso denegado.' });
     }
 
