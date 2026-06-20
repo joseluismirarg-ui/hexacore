@@ -6,6 +6,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma';
 import jwt from 'jsonwebtoken';
+import { requireSuperAdmin } from '../middleware/auth.middleware';
 
 const router = Router();
 
@@ -14,6 +15,24 @@ router.get('/licenses', async (req: Request, res: Response, next: NextFunction):
   try {
     const tenantId = (req as any).user?.tenantId || 'default-tenant';
     
+    if (tenantId === 'default-tenant') {
+      return res.json({
+        success: true,
+        data: {
+          tenantId: 'default-tenant',
+          erpActive: true,
+          posActive: true,
+          hrActive: true,
+          billingActive: true,
+          logisticsActive: true,
+          manufacturingActive: true,
+          treasuryActive: true,
+          reportsActive: true,
+          tmsActive: true,
+        }
+      });
+    }
+
     let license = await prisma.moduleLicense.findUnique({ where: { tenantId } });
     if (!license) {
       // Auto-crear si no existe
@@ -38,7 +57,7 @@ router.get('/licenses', async (req: Request, res: Response, next: NextFunction):
 });
 
 // PUT /api/admin/tenants/:id/licenses — Actualizar switches de módulos de un tenant específico
-router.put('/tenants/:id/licenses', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.put('/tenants/:id/licenses', requireSuperAdmin, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const tenantId = req.params.id;
     const {
@@ -85,7 +104,7 @@ router.put('/tenants/:id/licenses', async (req: Request, res: Response, next: Ne
 });
 
 // POST /api/admin/tenants — Crear una nueva empresa (Tenant) SaaS
-router.post('/tenants', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.post('/tenants', requireSuperAdmin, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { name, industry, plan, companyRfc, adminName, adminEmail, adminPassword } = req.body;
 
@@ -187,7 +206,7 @@ router.post('/tenants', async (req: Request, res: Response, next: NextFunction):
 });
 
 // GET /api/admin/tenants — Obtener todas las empresas (Tenants) y su configuración
-router.get('/tenants', async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.get('/tenants', requireSuperAdmin, async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const tenants = await prisma.tenant.findMany({
       include: {

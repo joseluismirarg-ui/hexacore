@@ -73,6 +73,10 @@ export const getCurrentTenantConfig = async (req: Request, res: Response): Promi
        return res.status(401).json({ error: 'No tenant found in context' });
     }
 
+    if (tenantId === 'default-tenant') {
+      return res.json({ id: 'default-tenant', name: 'Super Admin Global', industry: 'GENERAL', status: 'ACTIVE' });
+    }
+
     const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId }
     });
