@@ -18,8 +18,7 @@ export const importItemsController = async (req: Request, res: Response, next: N
     // Si el cliente no pasa una ubicación explícita, usamos la principal/primera
     if (!locationId) {
       const defaultLocation = await prisma.location.findFirst({
-        where: { tenantId },
-        orderBy: { createdAt: 'asc' }
+        where: { tenantId }
       });
       if (!defaultLocation) {
         res.status(400).json({ success: false, message: 'La empresa no tiene ninguna ubicación (Almacén) registrada.' });

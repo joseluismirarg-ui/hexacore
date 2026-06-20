@@ -183,7 +183,7 @@ export const executeBulkImportItems = async (
 
 export const executeBulkImportCustomers = async (
   tenantId: string,
-  userId: string,
+  _userId: string,
   rawData: any[]
 ): Promise<BulkImportReport> => {
   const report: BulkImportReport = {
@@ -220,10 +220,8 @@ export const executeBulkImportCustomers = async (
   try {
     await prisma.$transaction(async (tx) => {
       for (const chunk of chunks) {
-        for (const { row, data } of chunk) {
+        for (const { data } of chunk) {
           
-          let customerKey = data.rfc || data.company_name;
-
           // UPSERT based on RFC if provided, else company_name (assuming company_name + tenantId isn't unique, but we will try our best)
           const existingCustomer = await tx.customer.findFirst({
             where: {

@@ -41,6 +41,7 @@ const driver_routes_1 = __importDefault(require("./routes/driver.routes"));
 const tenant_middleware_1 = require("./middleware/tenant.middleware");
 const swagger_1 = require("./docs/swagger");
 const webhook_routes_1 = __importDefault(require("./routes/webhook.routes"));
+const bulk_import_routes_1 = __importDefault(require("./routes/bulk-import.routes"));
 const auth_routes_1 = __importDefault(require("./routes/auth.routes"));
 const auth_middleware_1 = require("./middleware/auth.middleware");
 const app = (0, express_1.default)();
@@ -141,6 +142,7 @@ app.use('/api/landlord', auth_middleware_1.authenticateToken, landlord_routes_1.
 app.use('/api/billing', billing_routes_1.default); // Público por webhook
 app.use('/api/analytics', auth_middleware_1.authenticateToken, analytics_routes_1.default);
 app.use('/api/trucks', auth_middleware_1.authenticateToken, truck_routes_1.default);
+app.use('/api/bulk-import', auth_middleware_1.authenticateToken, bulk_import_routes_1.default);
 // Servir siempre el frontend compilado (ignorar NODE_ENV para evitar 404s en Railway)
 app.use(express_1.default.static(path_1.default.join(__dirname, '../frontend/dist')));
 // Cualquier ruta que no sea de la API, servirá el index.html del frontend
