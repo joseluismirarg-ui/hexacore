@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { AlertTriangle, TrendingDown } from 'lucide-react';
+import { api } from '../../lib/api';
 
 export function AlertasPredictivas() {
   const [alerts, setAlerts] = useState<any[]>([]);
@@ -9,12 +10,9 @@ export function AlertasPredictivas() {
   const refetch = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/analytics/predictive', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('hc_token')}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setAlerts(data);
+      const res = await api.get('/api/analytics/predictive');
+      if (res.success && res.data) {
+        setAlerts(res.data);
       } else {
         setError(true);
       }
@@ -26,10 +24,16 @@ export function AlertasPredictivas() {
   };
 
   useEffect(() => {
-    fetch('/api/analytics/predictive/run', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('hc_token')}` }
-    }).then(() => refetch());
+    const runAnalysis = async () => {
+      try {
+        await api.post('/api/analytics/predictive/run', {});
+        await refetch();
+      } catch {
+        setError(true);
+        setLoading(false);
+      }
+    };
+    runAnalysis();
   }, []);
 
   if (loading) return <div className="text-gray-400 text-sm animate-pulse">Analizando velocidad de salida...</div>;

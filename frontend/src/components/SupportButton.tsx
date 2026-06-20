@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { LifeBuoy, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { api } from '../lib/api';
 
 export function SupportButton() {
   const [isOpen, setIsOpen] = useState(false);
@@ -14,17 +15,9 @@ export function SupportButton() {
 
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('hc_token');
-      const res = await fetch('/api/tickets', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ subject, body })
-      });
+      const res = await api.post('/api/tickets', { subject, body });
 
-      if (res.ok) {
+      if (res.success || res) {
         alert('Ticket enviado con éxito. Te contactaremos pronto.');
         setIsOpen(false);
         setSubject('');

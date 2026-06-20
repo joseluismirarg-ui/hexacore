@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Badge } from '@/components/ui/Badge';
+import { api } from '../lib/api';
 
 export default function LandlordDashboard() {
   const [data, setData] = useState<any>(null);
@@ -11,12 +12,9 @@ export default function LandlordDashboard() {
   const refetch = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/landlord/dashboard', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('hc_token')}` }
-      });
-      if (res.ok) {
-        const json = await res.json();
-        setData(json);
+      const res = await api.get('/api/landlord/dashboard');
+      if (res.success) {
+        setData(res.data || res); // fallback just in case it returns raw json
       } else {
         setError('Error fetching data');
       }
@@ -35,14 +33,7 @@ export default function LandlordDashboard() {
     if (!window.confirm(`¿Seguro que quieres cambiar el estatus a ${newStatus}?`)) return;
     setActionLoading(id);
     try {
-      await fetch(`/api/landlord/tenants/${id}/suspend`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ status: newStatus })
-      });
+      await api.post(`/api/landlord/tenants/${id}/suspend`, { status: newStatus });
       refetch();
     } catch (e) {
       alert('Error cambiando estatus');

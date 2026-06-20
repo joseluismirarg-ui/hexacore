@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LifeBuoy, CheckCircle2, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
+import { api } from '../lib/api';
 
 interface Ticket {
   id: string;
@@ -19,12 +20,12 @@ export default function AdminSupport() {
 
   const fetchTickets = async () => {
     try {
-      const token = localStorage.getItem('hc_token');
-      const res = await fetch('/api/tickets', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (res.ok) setTickets(data);
+      const res = await api.get('/api/tickets');
+      if (res.success && Array.isArray(res.data)) {
+        setTickets(res.data);
+      } else if (Array.isArray(res)) {
+        setTickets(res as any);
+      }
     } catch (error) {
       console.error(error);
     } finally {
@@ -38,16 +39,8 @@ export default function AdminSupport() {
 
   const updateStatus = async (id: string, status: string) => {
     try {
-      const token = localStorage.getItem('hc_token');
-      const res = await fetch(`/api/tickets/${id}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ status })
-      });
-      if (res.ok) {
+      const res = await api.put(`/api/tickets/${id}/status`, { status });
+      if (res.success || res) {
         fetchTickets();
       }
     } catch (error) {
