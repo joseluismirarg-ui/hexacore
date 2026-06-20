@@ -17,14 +17,13 @@ export function SupportButton() {
     try {
       const res = await api.post('/api/tickets', { subject, body });
 
-      if (res.success || res) {
+      if (res.success || (res as any).id) {
         alert('Ticket enviado con éxito. Te contactaremos pronto.');
         setIsOpen(false);
         setSubject('');
         setBody('');
       } else {
-        const errorData = await res.json();
-        alert(errorData.error || 'Error al enviar el ticket');
+        alert(res.message || 'Error al enviar el ticket');
       }
     } catch (error) {
       alert('Error de conexión');

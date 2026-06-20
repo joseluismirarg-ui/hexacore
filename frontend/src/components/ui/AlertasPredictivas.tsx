@@ -10,9 +10,9 @@ export function AlertasPredictivas() {
   const refetch = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/api/analytics/predictive');
+      const res = await api.get<any[]>('/api/analytics/predictive');
       if (res.success && res.data) {
-        setAlerts(res.data);
+        setAlerts(res.data as any[]);
       } else {
         setError(true);
       }
