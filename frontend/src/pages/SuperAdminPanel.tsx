@@ -37,7 +37,7 @@ export default function SuperAdminPanel() {
       await reloadTenants();
       alert('Empresa creada exitosamente');
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Error al crear la empresa');
+      alert(error.message || 'Error al crear la empresa');
     } finally {
       setIsSubmitting(false);
     }
