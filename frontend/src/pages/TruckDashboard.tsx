@@ -7,8 +7,12 @@ import {
   FileText, X, ChevronRight, BarChart
 } from 'lucide-react';
 
+import { TMSOperationsTab } from './tms/TMSOperationsTab';
+import { TMSAnalyticsTab } from './tms/TMSAnalyticsTab';
+
 export default function TruckDashboard() {
-  const [activeTab, setActiveTab] = useState<'occ' | 'fleet' | 'trips' | 'reports'>('occ');
+  const [activeTab, setActiveTab] = useState<'occ' | 'fleet' | 'trips' | 'reports' | 'finance'>('occ');
+  const [financeSubTab, setFinanceSubTab] = useState<'operations' | 'analytics'>('operations');
 
   // Modal States
   const [showTruckModal, setShowTruckModal] = useState(false);
@@ -179,6 +183,14 @@ export default function TruckDashboard() {
           }`}
         >
           <BarChart className="h-4 w-4" /> Reportes TMS
+        </button>
+        <button
+          onClick={() => setActiveTab('finance')}
+          className={`flex items-center gap-2 pb-2 text-sm font-medium transition-all ${
+            activeTab === 'finance' ? 'border-b-2 border-green-400 text-green-400' : 'text-gray-400 hover:text-gray-200'
+          }`}
+        >
+          <BarChart className="h-4 w-4" /> Control Financiero
         </button>
       </div>
 
@@ -374,6 +386,35 @@ export default function TruckDashboard() {
         </div>
       )}
 
+      {/* TABS CONTENIDO */}
+      {activeTab === 'finance' && (
+        <div className="space-y-6">
+          <div className="flex gap-4 border-b border-gray-800 pb-2">
+            <button
+              onClick={() => setFinanceSubTab('operations')}
+              className={`px-4 py-2 font-semibold rounded-t-lg transition-colors ${
+                financeSubTab === 'operations' ? 'bg-gray-800 text-white border-b-2 border-primary' : 'text-gray-500 hover:text-gray-300'
+              }`}
+            >
+              Operación Activa
+            </button>
+            <button
+              onClick={() => setFinanceSubTab('analytics')}
+              className={`px-4 py-2 font-semibold rounded-t-lg transition-colors ${
+                financeSubTab === 'analytics' ? 'bg-gray-800 text-white border-b-2 border-primary' : 'text-gray-500 hover:text-gray-300'
+              }`}
+            >
+              Inteligencia Financiera
+            </button>
+          </div>
+          
+          <div className="bg-gray-950 p-4 rounded-b-lg border border-t-0 border-gray-800 min-h-[500px]">
+            {financeSubTab === 'operations' ? <TMSOperationsTab /> : <TMSAnalyticsTab />}
+          </div>
+        </div>
+      )}
+
+      {/* Modales de Creación */}
       {/* Section C: Trips */}
       {activeTab === 'trips' && (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">

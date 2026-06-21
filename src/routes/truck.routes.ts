@@ -19,12 +19,18 @@ router.get('/drivers', TruckController.getDrivers);
 router.post('/drivers', TruckController.createDriver);
 router.patch('/drivers/:id', TruckController.updateDriver);
 
+import { createExpense, updateExpenseStatus, getProfitability } from '../controllers/tms-finance.controller';
+
 // Trips
 router.get('/trips', TruckController.getTrips);
 router.post('/trips/dispatch', TruckController.dispatchTrip);
 router.post('/trips/:id/complete', TruckController.completeTrip);
 router.post('/trips/stops/:stopId/complete', TruckController.completeTripStop);
 router.post('/trips/stops/:stopId/fail', TruckController.failTripStop);
-router.post('/trips/:id/expenses', TruckController.addTripExpense);
+
+// TMS Finance & Expenses
+router.post('/trips/expenses', createExpense);
+router.patch('/trips/expenses/:id/status', updateExpenseStatus);
+router.get('/analytics/profitability', getProfitability);
 
 export default router;

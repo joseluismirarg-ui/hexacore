@@ -1,0 +1,1 @@
+const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); async function main() { const t = await prisma.tenant.findUnique({where: {id: 'tenant-demo'}}); console.log(t); } main().catch(console.error).finally(()=>prisma.());

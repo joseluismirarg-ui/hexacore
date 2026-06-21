@@ -148,7 +148,7 @@ app.use('/api/subscription', authenticateToken, tenantMiddleware, subscriptionRo
 app.use('/api/tickets', authenticateToken, tenantMiddleware, ticketRoutes);
 app.use('/api/config', authenticateToken, tenantMiddleware, configRoutes);
 app.use('/api/treasury', authenticateToken, tenantMiddleware, treasuryRoutes);
-app.use('/api/admin', authenticateToken, requireSuperAdmin, tenantMiddleware, adminRoutes);
+app.use('/api/admin', authenticateToken, tenantMiddleware, adminRoutes);
 app.use('/api/driver', driverRoutes);
 app.use('/api/manufacturing', authenticateToken, tenantMiddleware, manufacturingRoutes);
 app.use('/api/sales-orders', authenticateToken, tenantMiddleware, salesOrderRoutes);

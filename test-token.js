@@ -1,0 +1,1 @@
+const jwt = require('jsonwebtoken'); const t = jwt.sign({ userId: 'seed-admin-01', role: 'SUPERADMIN', tenantId: 'default-tenant', impersonated: true }, process.env.JWT_SECRET || 'fallback_secret'); fetch('https://hexacore-production-4888.up.railway.app/api/admin/licenses', { headers: { Authorization: 'Bearer ' + t } }).then(r => r.text()).then(console.log);

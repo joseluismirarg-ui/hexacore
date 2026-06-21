@@ -4,6 +4,7 @@ import { useTMSStore } from '../store/useTMSStore';
 import { io, Socket } from 'socket.io-client';
 
 import { BASE_URL } from '../lib/api';
+import { DriverExpenseReporter } from '../components/tms/DriverExpenseReporter';
 
 const socket: Socket = io(BASE_URL);
 
@@ -117,6 +118,14 @@ export default function DriverTMS() {
           <CheckCircle size={32} /> Registrar Entrega
         </button>
       </div>
+
+      {activeStop?.tripId && (
+        <DriverExpenseReporter 
+          tripId={activeStop.tripId}
+          onClose={() => {}}
+          onSuccess={() => alert('Gasto reportado exitosamente')}
+        />
+      )}
     </div>
   );
 }

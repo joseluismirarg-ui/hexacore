@@ -148,14 +148,23 @@ export class TruckController {
   static async dispatchTrip(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const tenantId = tenantContext.getStore() || (req as any).user?.tenantId;
-      const { tripId, cargoDescription, originAddress, destinationAddress, truckId, driverId, clientId, departureDateTime, estimatedRevenue, stops } = req.body;
+      const { 
+        tripId, cargoDescription, originAddress, destinationAddress, 
+        truckId, driverId, clientId, departureDateTime, 
+        estimatedRevenue, stops,
+        fleetId, driverFee, fixedCostsTotal, fixedCostsDetails
+      } = req.body;
 
       const result = await prisma.$transaction(async (tx) => {
         const trip = await tx.trip.create({
           data: {
             tripId, cargoDescription, originAddress, destinationAddress,
             truckId, driverId, clientId, tenantId,
+            fleetId,
             estimatedRevenue: estimatedRevenue ? Number(estimatedRevenue) : 0,
+            driverFee: driverFee ? Number(driverFee) : 0,
+            fixedCostsTotal: fixedCostsTotal ? Number(fixedCostsTotal) : 0,
+            fixedCostsDetails: fixedCostsDetails || null,
             departureDateTime: departureDateTime ? new Date(departureDateTime) : new Date(),
             stops: stops && Array.isArray(stops) ? {
               create: stops.map((stop: any, index: number) => ({
@@ -207,7 +216,10 @@ export class TruckController {
 
         const trip = await tx.trip.update({
           where: { id, tenantId },
-          data: { arrivalDateTime: arrivalDateTime ? new Date(arrivalDateTime) : new Date() }
+          data: { 
+            status: 'LIQUIDATED',
+            arrivalDateTime: arrivalDateTime ? new Date(arrivalDateTime) : new Date() 
+          }
         });
 
         // Free up the truck
@@ -298,23 +310,6 @@ export class TruckController {
       }, 0);
 
       res.status(200).json({ success: true, data: stop });
-    } catch (err) { next(err); }
-  }
-
-  static async addTripExpense(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const tenantId = tenantContext.getStore() || (req as any).user?.tenantId;
-      const { id } = req.params; // Trip ID
-      const { expenseType, amount, currency, notes, receiptUrl } = req.body;
-
-      const expense = await prisma.tripExpense.create({
-        data: {
-          expenseType, amount, currency: currency || 'MXN', notes, receiptUrl,
-          tripId: id, tenantId
-        }
-      });
-
-      res.status(201).json({ success: true, data: expense });
     } catch (err) { next(err); }
   }
 

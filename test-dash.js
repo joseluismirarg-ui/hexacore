@@ -1,0 +1,1 @@
+const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); async function main() { const tx = await prisma.transaction.aggregate({ _sum: { total: true }}); console.log('TX:', tx); const cx = await prisma.customer.aggregate({ _sum: { currentDebt: true }}); console.log('CX:', cx); } main();

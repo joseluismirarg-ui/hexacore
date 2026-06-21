@@ -181,6 +181,7 @@ model User {
   routeVisits     RouteVisit[]
 
   cashShifts CashShift[]
+  tripExpenses    TripExpense[]
 
   @@map("users")
 }
@@ -1072,16 +1073,26 @@ model Driver {
   @@map("drivers")
 }
 
+enum TripStatus {
+  OPEN
+  IN_TRANSIT
+  LIQUIDATED
+}
+
 model Trip {
-  id                 String    @id @default(cuid())
-  tripId             String    @map("trip_id") // Auto-generated human readable ID (e.g., TRP-1001)
-  estimatedRevenue   Decimal   @default(0) @map("estimated_revenue") @db.Decimal(14, 4)
-  driverFee          Decimal   @default(0) @map("driver_fee") @db.Decimal(14, 4)
-  cargoDescription   String    @map("cargo_description")
-  departureDateTime  DateTime  @default(now()) @map("departure_date_time")
-  arrivalDateTime    DateTime? @map("arrival_date_time")
-  originAddress      String    @map("origin_address")
-  destinationAddress String    @map("destination_address")
+  id                 String     @id @default(cuid())
+  tripId             String     @map("trip_id") // Auto-generated human readable ID (e.g., TRP-1001)
+  status             TripStatus @default(OPEN)
+  fleetId            String?    @map("fleet_id")
+  estimatedRevenue   Decimal    @default(0) @map("estimated_revenue") @db.Decimal(14, 4)
+  driverFee          Decimal    @default(0) @map("driver_fee") @db.Decimal(14, 4)
+  fixedCostsTotal    Decimal    @default(0) @map("fixed_costs_total") @db.Decimal(14, 4)
+  fixedCostsDetails  Json?      @map("fixed_costs_details")
+  cargoDescription   String     @map("cargo_description")
+  departureDateTime  DateTime   @default(now()) @map("departure_date_time")
+  arrivalDateTime    DateTime?  @map("arrival_date_time")
+  originAddress      String     @map("origin_address")
+  destinationAddress String     @map("destination_address")
 
   truckId String @map("truck_id")
   truck   Truck  @relation(fields: [truckId], references: [id], onDelete: Restrict)
@@ -1102,17 +1113,34 @@ model Trip {
   @@map("trips")
 }
 
-model TripExpense {
-  id          String      @id @default(cuid())
-  expenseType ExpenseType @map("expense_type")
-  amount      Decimal     @db.Decimal(14, 4)
-  currency    String      @default("MXN")
-  date        DateTime    @default(now())
-  receiptUrl  String?     @map("receipt_url")
-  notes       String?
+enum ExpenseStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
 
-  tripId String @map("trip_id")
-  trip   Trip   @relation(fields: [tripId], references: [id], onDelete: Cascade)
+model TripExpense {
+  id                String        @id @default(cuid())
+  expenseType       ExpenseType   @map("expense_type")
+  amount            Decimal       @db.Decimal(14, 4)
+  currency          String        @default("MXN")
+  date              DateTime      @default(now())
+  description       String?       @map("description")
+  notes             String?
+  receiptUrl        String?       @map("receipt_url")
+  
+  status            ExpenseStatus @default(PENDING)
+  isManualException Boolean       @default(false) @map("is_manual_exception")
+  manualReason      String?       @map("manual_reason")
+  
+  createdByUserId   String?       @map("created_by_user_id")
+  createdByUser     User?         @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @default(now()) @updatedAt @map("updated_at")
+
+  tripId            String        @map("trip_id")
+  trip              Trip          @relation(fields: [tripId], references: [id], onDelete: Cascade)
 
   tenantId String @map("tenant_id")
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
