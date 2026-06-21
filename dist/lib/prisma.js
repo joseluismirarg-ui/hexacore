@@ -45,7 +45,7 @@ function createPrismaClient() {
                         }
                     }
                     // 2. Tenant Injection Logic
-                    if (tenantId && isTenantModel) {
+                    if (tenantId && tenantId !== 'default-tenant' && isTenantModel) {
                         if (['findUnique', 'findFirst', 'findMany', 'update', 'updateMany', 'delete', 'deleteMany', 'count', 'aggregate', 'groupBy'].includes(operation)) {
                             args = args || {};
                             args.where = { ...args.where, tenantId };
