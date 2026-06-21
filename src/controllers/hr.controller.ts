@@ -9,7 +9,7 @@ import { randomUUID } from 'crypto';
 // ── Empleados (Directorio y Perfiles) ───────────────────────────────────────
 export const getEmployees = async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant?.id;
+    const tenantId = (req as any).user?.tenantId || 'default-tenant';
     const employees = await prisma.user.findMany({
       where: { tenantId },
       include: { employeeProfile: true },
@@ -23,7 +23,7 @@ export const getEmployees = async (req: Request, res: Response) => {
 
 export const createEmployee = async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant?.id;
+    const tenantId = (req as any).user?.tenantId || 'default-tenant';
     const { 
       name, email, role, 
       employeeCode, rfc, curp, phone, emergencyContact,
@@ -120,7 +120,7 @@ export const updateEmployee = async (req: Request, res: Response) => {
 // ── Asistencia y Puntualidad ───────────────────────────────────────────────
 export const checkInOut = async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant?.id;
+    const tenantId = (req as any).user?.tenantId || 'default-tenant';
     const userId = (req as any).user?.id;
     
     if (!userId) {
@@ -169,7 +169,7 @@ export const checkInOut = async (req: Request, res: Response) => {
 
 export const getAttendanceDashboard = async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant?.id;
+    const tenantId = (req as any).user?.tenantId || 'default-tenant';
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -191,7 +191,7 @@ export const getAttendanceDashboard = async (req: Request, res: Response) => {
 // ── Control de Rutas (Vendedores) ──────────────────────────────────────────
 export const registerRouteVisit = async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant?.id;
+    const tenantId = (req as any).user?.tenantId || 'default-tenant';
     const userId = (req as any).user?.id;
     const { customerId, notes } = req.body;
 
@@ -217,7 +217,7 @@ export const registerRouteVisit = async (req: Request, res: Response) => {
 
 export const getRouteVisits = async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant?.id;
+    const tenantId = (req as any).user?.tenantId || 'default-tenant';
     const today = new Date();
     today.setHours(0,0,0,0);
 
@@ -242,7 +242,7 @@ export const getRouteVisits = async (req: Request, res: Response) => {
 // ── Nómina (Placeholder) ───────────────────────────────────────────────────
 export const calculatePayroll = async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant?.id;
+    const tenantId = (req as any).user?.tenantId || 'default-tenant';
     const payrolls = await prisma.payroll.findMany({
       where: { tenantId },
     });
@@ -254,7 +254,7 @@ export const calculatePayroll = async (req: Request, res: Response) => {
 
 export const requestLeave = async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant?.id;
+    const tenantId = (req as any).user?.tenantId || 'default-tenant';
     const userId = (req as any).user?.id;
     const { type, startDate, endDate, reason } = req.body;
 

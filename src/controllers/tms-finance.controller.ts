@@ -15,7 +15,9 @@ export const createExpense = async (req: Request, res: Response): Promise<any> =
       receiptUrl, 
       isManualException, 
       manualReason,
-      expenseType // DEFAULT, TOLL, FUEL, MEAL, etc.
+      expenseType, // DEFAULT, TOLL, FUEL, MEAL, etc.
+      fuelLiters,
+      odometerReading
     } = req.body;
 
     const tenantId = (req as any).user?.tenantId || 'default-tenant';
@@ -35,6 +37,8 @@ export const createExpense = async (req: Request, res: Response): Promise<any> =
         manualReason: isManualException ? manualReason : null,
         status: isManualException ? 'APPROVED' : 'PENDING',
         expenseType: expenseType || 'OTHER',
+        fuelLiters: fuelLiters ? Number(fuelLiters) : null,
+        odometerReading: odometerReading ? Number(odometerReading) : null,
         createdByUserId: userId,
         tenantId,
       }
@@ -61,7 +65,134 @@ export const updateExpenseStatus = async (req: Request, res: Response): Promise<
       data: { status }
     });
 
-    return res.json(expense);
+    if (status === 'APPROVED') {
+      const tenantId = (req as any).user?.tenantId || 'default-tenant';
+      let bankAccount = await prisma.bankAccount.findFirst({
+        where: { tenantId }
+      });
+
+      if (!bankAccount) {
+        bankAccount = await prisma.bankAccount.create({
+          data: {
+            bankName: 'Caja Fuerte TMS',
+            accountNumber: `TMS-${tenantId.substring(0, 8)}`,
+            currentBalance: '0',
+            tenantId
+          }
+        });
+      }
+
+      await prisma.bankMovement.create({
+        data: {
+          bankAccountId: bankAccount.id,
+          type: 'OUT',
+          amount: expense.amount.toString(),
+          concept: `Gasto TMS Aprobado: ${expense.expenseType} - Viaje ${expense.tripId}`
+        }
+      });
+      
+      const currentBal = Number(bankAccount.currentBalance);
+      await prisma.bankAccount.update({
+        where: { id: bankAccount.id },
+        data: { currentBalance: (currentBal - Number(expense.amount)).toString() }
+      });
+    }
+
+    return res.json({ success: true, data: expense });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+// ── Liquidación de Viaje (Admin) ─────────────────────────────────────────────
+export const settleTrip = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { id } = req.params;
+    
+    const trip = await prisma.trip.findUnique({
+      where: { id },
+      include: { expenses: true }
+    });
+
+    if (!trip) return res.status(404).json({ error: "Trip not found" });
+
+    const totalApprovedExpenses = trip.expenses
+      .filter(e => e.status === 'APPROVED')
+      .reduce((sum, e) => sum + Number(e.amount), 0);
+      
+    const advanceAmount = Number(trip.advanceAmount || 0);
+    const balance = advanceAmount - totalApprovedExpenses;
+
+    const updatedTrip = await prisma.trip.update({
+      where: { id },
+      data: { status: 'LIQUIDATED' }
+    });
+
+    if (balance !== 0) {
+      const tenantId = (req as any).user?.tenantId || 'default-tenant';
+      let bankAccount = await prisma.bankAccount.findFirst({
+        where: { tenantId }
+      });
+
+      if (bankAccount) {
+        const type = balance > 0 ? 'IN' : 'OUT'; // Si sobró anticipo, entra a caja. Si faltó, sale a favor del chofer.
+        const absBalance = Math.abs(balance);
+        
+        await prisma.bankMovement.create({
+          data: {
+            bankAccountId: bankAccount.id,
+            type,
+            amount: absBalance.toString(),
+            concept: `Liquidación de Viaje ${trip.tripId} - ${type === 'IN' ? 'Devolución de viáticos' : 'Reembolso a chofer'}`
+          }
+        });
+        
+        const currentBal = Number(bankAccount.currentBalance);
+        await prisma.bankAccount.update({
+          where: { id: bankAccount.id },
+          data: { currentBalance: (type === 'IN' ? currentBal + absBalance : currentBal - absBalance).toString() }
+        });
+      }
+    }
+
+    return res.json({ success: true, data: { trip: updatedTrip, balance, totalApprovedExpenses } });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+// ── Gastos Pendientes Globales (Admin) ───────────────────────────────────────
+export const getPendingExpenses = async (_req: Request, res: Response): Promise<any> => {
+  try {
+    const expenses = await prisma.tripExpense.findMany({
+      where: { status: 'PENDING' },
+      include: {
+        trip: {
+          include: {
+            truck: true,
+            driver: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+    return res.json({ success: true, data: expenses });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+// ── Actualizar Anticipo de Viaje (Admin) ───────────────────────────────────────
+export const updateTripAdvance = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { id } = req.params;
+    const { advanceAmount } = req.body;
+    
+    const updatedTrip = await prisma.trip.update({
+      where: { id },
+      data: { advanceAmount: Number(advanceAmount) }
+    });
+    return res.json({ success: true, data: updatedTrip });
   } catch (error: any) {
     return res.status(500).json({ error: error.message });
   }

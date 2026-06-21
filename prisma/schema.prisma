@@ -1088,6 +1088,7 @@ model Trip {
   driverFee          Decimal    @default(0) @map("driver_fee") @db.Decimal(14, 4)
   fixedCostsTotal    Decimal    @default(0) @map("fixed_costs_total") @db.Decimal(14, 4)
   fixedCostsDetails  Json?      @map("fixed_costs_details")
+  advanceAmount      Decimal    @default(0) @map("advance_amount") @db.Decimal(14, 4)
   cargoDescription   String     @map("cargo_description")
   departureDateTime  DateTime   @default(now()) @map("departure_date_time")
   arrivalDateTime    DateTime?  @map("arrival_date_time")
@@ -1128,6 +1129,8 @@ model TripExpense {
   description       String?       @map("description")
   notes             String?
   receiptUrl        String?       @map("receipt_url")
+  fuelLiters        Decimal?      @map("fuel_liters") @db.Decimal(10, 2)
+  odometerReading   Decimal?      @map("odometer_reading") @db.Decimal(14, 2)
   
   status            ExpenseStatus @default(PENDING)
   isManualException Boolean       @default(false) @map("is_manual_exception")

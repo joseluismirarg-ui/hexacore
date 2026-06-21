@@ -13,7 +13,9 @@ export function DriverExpenseReporter({ tripId, onClose, onSuccess }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [expenseType, setExpenseType] = useState('DEFAULT');
+  const [expenseType, setExpenseType] = useState('OTHER');
+  const [fuelLiters, setFuelLiters] = useState('');
+  const [odometerReading, setOdometerReading] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +56,8 @@ export function DriverExpenseReporter({ tripId, onClose, onSuccess }: Props) {
         description,
         expenseType,
         receiptUrl,
+        fuelLiters: expenseType === 'FUEL' ? Number(fuelLiters) : undefined,
+        odometerReading: expenseType === 'FUEL' ? Number(odometerReading) : undefined,
         isManualException: false
       });
 
@@ -61,6 +65,9 @@ export function DriverExpenseReporter({ tripId, onClose, onSuccess }: Props) {
         setIsOpen(false);
         setAmount('');
         setDescription('');
+        setExpenseType('OTHER');
+        setFuelLiters('');
+        setOdometerReading('');
         setFile(null);
         onSuccess();
       } else {
@@ -110,6 +117,50 @@ export function DriverExpenseReporter({ tripId, onClose, onSuccess }: Props) {
               placeholder="0.00"
             />
           </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-400 mb-1">Tipo de Gasto</label>
+            <select
+              value={expenseType}
+              onChange={e => setExpenseType(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+            >
+              <option value="OTHER">Otro Gasto</option>
+              <option value="FUEL">Combustible (Diésel/Gasolina)</option>
+              <option value="TOLLS">Casetas / Peajes</option>
+              <option value="PER_DIEM">Comidas / Viáticos</option>
+              <option value="MAINTENANCE">Mantenimiento / Talacha</option>
+            </select>
+          </div>
+
+          {expenseType === 'FUEL' && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Litros Cargados</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  value={fuelLiters}
+                  onChange={e => setFuelLiters(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Odómetro (Km)</label>
+                <input
+                  type="number"
+                  step="1"
+                  required
+                  value={odometerReading}
+                  onChange={e => setOdometerReading(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                  placeholder="0"
+                />
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-1">Concepto Corto</label>

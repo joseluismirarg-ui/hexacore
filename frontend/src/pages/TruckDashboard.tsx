@@ -9,6 +9,7 @@ import {
 
 import { TMSOperationsTab } from '../components/tms/TMSOperationsTab';
 import { TMSAnalyticsTab } from '../components/tms/TMSAnalyticsTab';
+import { TMSFinanceBoard } from '../components/tms/TMSFinanceBoard';
 
 export default function TruckDashboard() {
   const [activeTab, setActiveTab] = useState<'occ' | 'fleet' | 'trips' | 'reports' | 'finance'>('occ');
@@ -563,6 +564,13 @@ export default function TruckDashboard() {
         </div>
       )}
 
+
+      {/* Section E: Finance Board */}
+      {activeTab === 'finance' && (
+        <div className="animate-in fade-in slide-in-from-bottom-2">
+          <TMSFinanceBoard />
+        </div>
+      )}
 
       {/* MODALS */}
 

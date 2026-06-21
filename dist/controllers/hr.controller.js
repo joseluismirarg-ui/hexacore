@@ -9,7 +9,7 @@ const crypto_1 = require("crypto");
 // ── Empleados (Directorio y Perfiles) ───────────────────────────────────────
 const getEmployees = async (req, res) => {
     try {
-        const tenantId = req.tenant?.id;
+        const tenantId = req.user?.tenantId || 'default-tenant';
         const employees = await prisma_1.prisma.user.findMany({
             where: { tenantId },
             include: { employeeProfile: true },
@@ -24,7 +24,7 @@ const getEmployees = async (req, res) => {
 exports.getEmployees = getEmployees;
 const createEmployee = async (req, res) => {
     try {
-        const tenantId = req.tenant?.id;
+        const tenantId = req.user?.tenantId || 'default-tenant';
         const { name, email, role, employeeCode, rfc, curp, phone, emergencyContact, salaryBase, salaryPeriod, shiftStartTime, earnCommission, commissionPercentage, productivityBonus, punctualityBonus, attendanceBonus } = req.body;
         const result = await prisma_1.prisma.$transaction(async (tx) => {
             const user = await tx.user.create({
@@ -107,7 +107,7 @@ exports.updateEmployee = updateEmployee;
 // ── Asistencia y Puntualidad ───────────────────────────────────────────────
 const checkInOut = async (req, res) => {
     try {
-        const tenantId = req.tenant?.id;
+        const tenantId = req.user?.tenantId || 'default-tenant';
         const userId = req.user?.id;
         if (!userId) {
             res.status(401).json({ error: "User required" });
@@ -154,7 +154,7 @@ const checkInOut = async (req, res) => {
 exports.checkInOut = checkInOut;
 const getAttendanceDashboard = async (req, res) => {
     try {
-        const tenantId = req.tenant?.id;
+        const tenantId = req.user?.tenantId || 'default-tenant';
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const attendances = await prisma_1.prisma.attendance.findMany({
@@ -175,7 +175,7 @@ exports.getAttendanceDashboard = getAttendanceDashboard;
 // ── Control de Rutas (Vendedores) ──────────────────────────────────────────
 const registerRouteVisit = async (req, res) => {
     try {
-        const tenantId = req.tenant?.id;
+        const tenantId = req.user?.tenantId || 'default-tenant';
         const userId = req.user?.id;
         const { customerId, notes } = req.body;
         if (!userId || !customerId) {
@@ -199,7 +199,7 @@ const registerRouteVisit = async (req, res) => {
 exports.registerRouteVisit = registerRouteVisit;
 const getRouteVisits = async (req, res) => {
     try {
-        const tenantId = req.tenant?.id;
+        const tenantId = req.user?.tenantId || 'default-tenant';
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const visits = await prisma_1.prisma.routeVisit.findMany({
@@ -223,7 +223,7 @@ exports.getRouteVisits = getRouteVisits;
 // ── Nómina (Placeholder) ───────────────────────────────────────────────────
 const calculatePayroll = async (req, res) => {
     try {
-        const tenantId = req.tenant?.id;
+        const tenantId = req.user?.tenantId || 'default-tenant';
         const payrolls = await prisma_1.prisma.payroll.findMany({
             where: { tenantId },
         });
@@ -236,7 +236,7 @@ const calculatePayroll = async (req, res) => {
 exports.calculatePayroll = calculatePayroll;
 const requestLeave = async (req, res) => {
     try {
-        const tenantId = req.tenant?.id;
+        const tenantId = req.user?.tenantId || 'default-tenant';
         const userId = req.user?.id;
         const { type, startDate, endDate, reason } = req.body;
         if (!userId) {
