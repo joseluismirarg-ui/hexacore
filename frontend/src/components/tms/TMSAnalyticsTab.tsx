@@ -23,7 +23,7 @@ export function TMSAnalyticsTab() {
     execute();
   };
 
-  const columns: Column[] = [
+  const columns: Column<any>[] = [
     { header: 'ID Viaje', accessor: 'tripId' },
     { header: 'Unidad', accessor: 'truckPlates' },
     { header: 'Operador', accessor: 'driverName' },
@@ -133,7 +133,7 @@ export function TMSAnalyticsTab() {
         <div className="p-4 border-b border-gray-800">
           <h3 className="text-lg font-bold text-white">Desglose Unit Economics por Viaje</h3>
         </div>
-        <DataTable columns={columns} data={trips} isLoading={loading} emptyMessage="No hay viajes liquidados en este periodo." />
+        <DataTable columns={columns} data={trips} keyExtractor={(row: any) => row.id} emptyMessage="No hay viajes liquidados en este periodo." />
       </div>
     </div>
   );

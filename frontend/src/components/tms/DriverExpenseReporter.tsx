@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { api } from '@/lib/api';
-import { Camera, Upload, X, Loader2, Plus } from 'lucide-react';
+import { Camera, Upload, X, Loader2, Plus, CheckCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 interface Props {
@@ -147,8 +147,9 @@ export function DriverExpenseReporter({ tripId, onClose, onSuccess }: Props) {
               accept="image/*"
               className="hidden"
               onChange={e => {
-                if (e.target.files && e.target.files.length > 0) {
-                  setFile(e.target.files[0]);
+                const files = e.target.files;
+                if (files && files.length > 0) {
+                  setFile(files[0] || null);
                 }
               }}
             />

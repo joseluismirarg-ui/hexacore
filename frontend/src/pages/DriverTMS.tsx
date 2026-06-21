@@ -9,7 +9,7 @@ import { DriverExpenseReporter } from '../components/tms/DriverExpenseReporter';
 const socket: Socket = io(BASE_URL);
 
 export default function DriverTMS() {
-  const { stops, markStopAs, loadTrip, syncOfflineData } = useTMSStore();
+  const { tripId, stops, markStopAs, loadTrip, syncOfflineData } = useTMSStore();
   
   useEffect(() => {
     // Cargar viaje al montar
@@ -119,9 +119,9 @@ export default function DriverTMS() {
         </button>
       </div>
 
-      {activeStop?.tripId && (
+      {tripId && (
         <DriverExpenseReporter 
-          tripId={activeStop.tripId}
+          tripId={tripId}
           onClose={() => {}}
           onSuccess={() => alert('Gasto reportado exitosamente')}
         />

@@ -7,8 +7,8 @@ import {
   FileText, X, ChevronRight, BarChart
 } from 'lucide-react';
 
-import { TMSOperationsTab } from './tms/TMSOperationsTab';
-import { TMSAnalyticsTab } from './tms/TMSAnalyticsTab';
+import { TMSOperationsTab } from '../components/tms/TMSOperationsTab';
+import { TMSAnalyticsTab } from '../components/tms/TMSAnalyticsTab';
 
 export default function TruckDashboard() {
   const [activeTab, setActiveTab] = useState<'occ' | 'fleet' | 'trips' | 'reports' | 'finance'>('occ');
