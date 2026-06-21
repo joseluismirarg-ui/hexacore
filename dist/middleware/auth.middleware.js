@@ -45,7 +45,7 @@ const authenticateToken = async (req, res, next) => {
         const { data: { user }, error } = await supabase.auth.getUser(token);
         if (error || !user) {
             console.error('Supabase Auth Error:', error?.message);
-            res.status(403).json({ success: false, message: 'Token inválido o expirado' });
+            res.status(403).json({ success: false, message: 'Token inválido o expirado (SUPABASE_AUTH_ERROR)' });
             return;
         }
         // Extraer rol y tenantId de los metadatos de Supabase
@@ -60,7 +60,7 @@ const authenticateToken = async (req, res, next) => {
     }
     catch (error) {
         console.error('Auth Exception:', error);
-        res.status(403).json({ success: false, message: 'Excepción de seguridad en token' });
+        res.status(403).json({ success: false, message: 'Excepción de seguridad en token (AUTH_EXCEPTION)' });
         return;
     }
 };

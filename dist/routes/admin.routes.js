@@ -10,11 +10,31 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const prisma_1 = require("../lib/prisma");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const auth_middleware_1 = require("../middleware/auth.middleware");
 const router = (0, express_1.Router)();
 // GET /api/admin/licenses — Obtener la configuración de licencias
 router.get('/licenses', async (req, res, next) => {
     try {
         const tenantId = req.user?.tenantId || 'default-tenant';
+        const role = req.user?.role;
+        if (tenantId === 'default-tenant' || role === 'SUPERADMIN') {
+            res.json({
+                success: true,
+                data: {
+                    tenantId: 'default-tenant',
+                    erpActive: true,
+                    posActive: true,
+                    hrActive: true,
+                    billingActive: true,
+                    logisticsActive: true,
+                    manufacturingActive: true,
+                    treasuryActive: true,
+                    reportsActive: true,
+                    tmsActive: true,
+                }
+            });
+            return;
+        }
         let license = await prisma_1.prisma.moduleLicense.findUnique({ where: { tenantId } });
         if (!license) {
             // Auto-crear si no existe
@@ -39,7 +59,7 @@ router.get('/licenses', async (req, res, next) => {
     }
 });
 // PUT /api/admin/tenants/:id/licenses — Actualizar switches de módulos de un tenant específico
-router.put('/tenants/:id/licenses', async (req, res, next) => {
+router.put('/tenants/:id/licenses', auth_middleware_1.requireSuperAdmin, async (req, res, next) => {
     try {
         const tenantId = req.params.id;
         const { erpActive, posActive, hrActive, billingActive, logisticsActive, manufacturingActive, treasuryActive, reportsActive, tmsActive } = req.body;
@@ -83,7 +103,7 @@ router.put('/tenants/:id/licenses', async (req, res, next) => {
     }
 });
 // POST /api/admin/tenants — Crear una nueva empresa (Tenant) SaaS
-router.post('/tenants', async (req, res, next) => {
+router.post('/tenants', auth_middleware_1.requireSuperAdmin, async (req, res, next) => {
     try {
         const { name, industry, plan, companyRfc, adminName, adminEmail, adminPassword } = req.body;
         if (!name || !adminName || !adminEmail || !adminPassword) {
@@ -172,7 +192,7 @@ router.post('/tenants', async (req, res, next) => {
     }
 });
 // GET /api/admin/tenants — Obtener todas las empresas (Tenants) y su configuración
-router.get('/tenants', async (_req, res, next) => {
+router.get('/tenants', auth_middleware_1.requireSuperAdmin, async (_req, res, next) => {
     try {
         const tenants = await prisma_1.prisma.tenant.findMany({
             include: {
@@ -199,7 +219,7 @@ router.post('/impersonate/:tenantId', async (req, res, next) => {
             res.status(404).json({ success: false, message: 'Empresa no encontrada' });
             return;
         }
-        if (userRole !== 'ADMIN') {
+        if (userRole !== 'ADMIN' && userRole !== 'SUPERADMIN') {
             res.status(403).json({ success: false, message: 'No autorizado para impersonar' });
             return;
         }

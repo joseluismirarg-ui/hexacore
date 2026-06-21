@@ -101,7 +101,7 @@ app.use((req, _res, next) => {
     }
     next();
 });
-app.use(tenant_middleware_1.tenantMiddleware);
+// app.use(tenantMiddleware); // Movido a nivel de ruta para ejecutarse DESPUÉS de authenticateToken
 // =============================================================================
 // HEALTH CHECK
 // =============================================================================
@@ -112,6 +112,7 @@ app.get('/health', (_req, res) => {
         version: '2.0.0',
         timestamp: new Date().toISOString(),
         environment: process.env.NODE_ENV ?? 'development',
+        dbUrl: process.env.DATABASE_URL?.substring(0, 30) + '...'
     });
 });
 // =============================================================================
@@ -121,32 +122,32 @@ app.use('/api/auth', auth_routes_1.default);
 // =============================================================================
 // RUTAS DE LA API — ERP v2.0 (PROTEGIDAS)
 // =============================================================================
-app.use('/api/transactions', auth_middleware_1.authenticateToken, transaction_routes_1.default);
-app.use('/api/collections', auth_middleware_1.authenticateToken, cobranza_routes_1.default);
-app.use('/api/dashboard', auth_middleware_1.authenticateToken, dashboard_routes_1.default);
-app.use('/api/customers', auth_middleware_1.authenticateToken, cliente_routes_1.default);
-app.use('/api/users', auth_middleware_1.authenticateToken, usuario_routes_1.default);
-app.use('/api/inventory', auth_middleware_1.authenticateToken, inventario_routes_1.default);
-app.use('/api/products', auth_middleware_1.authenticateToken, item_routes_1.default);
-app.use('/api/payments', auth_middleware_1.authenticateToken, payment_routes_1.default);
-app.use('/api/purchases', auth_middleware_1.authenticateToken, purchase_routes_1.default);
-app.use('/api/invoices', auth_middleware_1.authenticateToken, invoice_routes_1.default);
-app.use('/api/warehouses', auth_middleware_1.authenticateToken, location_routes_1.default);
-app.use('/api/hr', auth_middleware_1.authenticateToken, hr_routes_1.default);
-app.use('/api/subscription', auth_middleware_1.authenticateToken, subscription_routes_1.default);
-app.use('/api/tickets', auth_middleware_1.authenticateToken, ticket_routes_1.default);
-app.use('/api/config', auth_middleware_1.authenticateToken, config_routes_1.default);
-app.use('/api/treasury', auth_middleware_1.authenticateToken, treasury_routes_1.default);
-app.use('/api/admin', auth_middleware_1.authenticateToken, auth_middleware_1.requireSuperAdmin, admin_routes_1.default);
+app.use('/api/transactions', auth_middleware_1.authenticateToken, tenant_middleware_1.tenantMiddleware, transaction_routes_1.default);
+app.use('/api/collections', auth_middleware_1.authenticateToken, tenant_middleware_1.tenantMiddleware, cobranza_routes_1.default);
+app.use('/api/dashboard', auth_middleware_1.authenticateToken, tenant_middleware_1.tenantMiddleware, dashboard_routes_1.default);
+app.use('/api/customers', auth_middleware_1.authenticateToken, tenant_middleware_1.tenantMiddleware, cliente_routes_1.default);
+app.use('/api/users', auth_middleware_1.authenticateToken, tenant_middleware_1.tenantMiddleware, usuario_routes_1.default);
+app.use('/api/inventory', auth_middleware_1.authenticateToken, tenant_middleware_1.tenantMiddleware, inventario_routes_1.default);
+app.use('/api/products', auth_middleware_1.authenticateToken, tenant_middleware_1.tenantMiddleware, item_routes_1.default);
+app.use('/api/payments', auth_middleware_1.authenticateToken, tenant_middleware_1.tenantMiddleware, payment_routes_1.default);
+app.use('/api/purchases', auth_middleware_1.authenticateToken, tenant_middleware_1.tenantMiddleware, purchase_routes_1.default);
+app.use('/api/invoices', auth_middleware_1.authenticateToken, tenant_middleware_1.tenantMiddleware, invoice_routes_1.default);
+app.use('/api/warehouses', auth_middleware_1.authenticateToken, tenant_middleware_1.tenantMiddleware, location_routes_1.default);
+app.use('/api/hr', auth_middleware_1.authenticateToken, tenant_middleware_1.tenantMiddleware, hr_routes_1.default);
+app.use('/api/subscription', auth_middleware_1.authenticateToken, tenant_middleware_1.tenantMiddleware, subscription_routes_1.default);
+app.use('/api/tickets', auth_middleware_1.authenticateToken, tenant_middleware_1.tenantMiddleware, ticket_routes_1.default);
+app.use('/api/config', auth_middleware_1.authenticateToken, tenant_middleware_1.tenantMiddleware, config_routes_1.default);
+app.use('/api/treasury', auth_middleware_1.authenticateToken, tenant_middleware_1.tenantMiddleware, treasury_routes_1.default);
+app.use('/api/admin', auth_middleware_1.authenticateToken, tenant_middleware_1.tenantMiddleware, admin_routes_1.default);
 app.use('/api/driver', driver_routes_1.default);
-app.use('/api/manufacturing', auth_middleware_1.authenticateToken, manufacturing_routes_1.default);
-app.use('/api/sales-orders', auth_middleware_1.authenticateToken, sales_order_routes_1.default);
-app.use('/api/logistics', auth_middleware_1.authenticateToken, logistics_routes_1.default);
-app.use('/api/tenants', auth_middleware_1.authenticateToken, tenant_routes_1.default);
-app.use('/api/landlord', auth_middleware_1.authenticateToken, auth_middleware_1.requireSuperAdmin, landlord_routes_1.default);
-app.use('/api/v1/superadmin', auth_middleware_1.authenticateToken, auth_middleware_1.requireSuperAdmin, superadmin_routes_1.default);
+app.use('/api/manufacturing', auth_middleware_1.authenticateToken, tenant_middleware_1.tenantMiddleware, manufacturing_routes_1.default);
+app.use('/api/sales-orders', auth_middleware_1.authenticateToken, tenant_middleware_1.tenantMiddleware, sales_order_routes_1.default);
+app.use('/api/logistics', auth_middleware_1.authenticateToken, tenant_middleware_1.tenantMiddleware, logistics_routes_1.default);
+app.use('/api/tenants', auth_middleware_1.authenticateToken, tenant_middleware_1.tenantMiddleware, tenant_routes_1.default);
+app.use('/api/landlord', auth_middleware_1.authenticateToken, auth_middleware_1.requireSuperAdmin, tenant_middleware_1.tenantMiddleware, landlord_routes_1.default);
+app.use('/api/v1/superadmin', auth_middleware_1.authenticateToken, auth_middleware_1.requireSuperAdmin, tenant_middleware_1.tenantMiddleware, superadmin_routes_1.default);
 app.use('/api/billing', billing_routes_1.default); // Público por webhook
-app.use('/api/analytics', auth_middleware_1.authenticateToken, analytics_routes_1.default);
+app.use('/api/analytics', auth_middleware_1.authenticateToken, tenant_middleware_1.tenantMiddleware, analytics_routes_1.default);
 app.use('/api/trucks', auth_middleware_1.authenticateToken, truck_routes_1.default);
 app.use('/api/bulk-import', auth_middleware_1.authenticateToken, bulk_import_routes_1.default);
 app.use('/api/cxc', auth_middleware_1.authenticateToken, cxc_routes_1.default);

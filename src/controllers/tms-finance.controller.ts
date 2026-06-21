@@ -6,7 +6,7 @@ import { prisma } from "../lib/prisma";
 // ============================================================================
 
 // ── Reportar Gasto (Chofer) o Captura Manual Excepcional (Admin) ────────────
-export const createExpense = async (req: Request, res: Response) => {
+export const createExpense = async (req: Request, res: Response): Promise<any> => {
   try {
     const { 
       tripId, 
@@ -40,14 +40,14 @@ export const createExpense = async (req: Request, res: Response) => {
       }
     });
 
-    res.json(expense);
+    return res.json(expense);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 };
 
 // ── Aprobar o Rechazar Gasto (Admin) ─────────────────────────────────────────
-export const updateExpenseStatus = async (req: Request, res: Response) => {
+export const updateExpenseStatus = async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
     const { status } = req.body; // APPROVED or REJECTED
@@ -61,14 +61,14 @@ export const updateExpenseStatus = async (req: Request, res: Response) => {
       data: { status }
     });
 
-    res.json(expense);
+    return res.json(expense);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 };
 
 // ── Analítica y Rentabilidad Cruzada (Admin) ─────────────────────────────────
-export const getProfitability = async (req: Request, res: Response) => {
+export const getProfitability = async (req: Request, res: Response): Promise<any> => {
   try {
     const { startDate, endDate, fleetId, tripId } = req.query;
 
@@ -124,7 +124,7 @@ export const getProfitability = async (req: Request, res: Response) => {
       return {
         id: trip.id,
         tripId: trip.tripId,
-        truckPlates: trip.truck?.licensePlate,
+        truckPlates: trip.truck?.plate,
         driverName: trip.driver?.name,
         departure: trip.departureDateTime,
         arrival: trip.arrivalDateTime,
@@ -140,7 +140,7 @@ export const getProfitability = async (req: Request, res: Response) => {
     const netProfitTotal = totalRevenue - totalCostsOperative;
     const profitMarginTotal = totalRevenue > 0 ? (netProfitTotal / totalRevenue) * 100 : 0;
 
-    res.json({
+    return res.json({
       kpis: {
         totalRevenue,
         totalCostsOperative,
@@ -152,6 +152,6 @@ export const getProfitability = async (req: Request, res: Response) => {
       trips: detailedTrips
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 };

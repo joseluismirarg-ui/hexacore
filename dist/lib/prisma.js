@@ -22,10 +22,14 @@ function createPrismaClient() {
                     const tenantId = tenant_middleware_1.tenantContext.getStore();
                     const isTenantModel = tenantModels.has(model);
                     const isSoftDeleteModel = softDeleteModels.has(model);
+                    // DEBUG
+                    if (model === 'Item' && operation === 'findMany') {
+                        console.log(`[PRISMA_EXT] Item.findMany - tenantId from ALS:`, tenantId);
+                    }
                     // 1. Soft Deletes Logic
                     if (isSoftDeleteModel) {
                         if (operation === 'findUnique' || operation === 'findFirst' || operation === 'findMany') {
-                            args.where = { deletedAt: null, ...args.where };
+                            args.where = { ...args.where, deletedAt: null };
                         }
                         else if (operation === 'delete') {
                             return basePrisma[model].update({
@@ -42,24 +46,25 @@ function createPrismaClient() {
                     }
                     // 2. Tenant Injection Logic
                     if (tenantId && isTenantModel) {
-                        if (operation === 'findUnique' || operation === 'findFirst' || operation === 'findMany' || operation === 'update' || operation === 'updateMany' || operation === 'delete' || operation === 'deleteMany') {
-                            args.where = { tenantId, ...args.where };
+                        if (['findUnique', 'findFirst', 'findMany', 'update', 'updateMany', 'delete', 'deleteMany', 'count', 'aggregate', 'groupBy'].includes(operation)) {
+                            args = args || {};
+                            args.where = { ...args.where, tenantId };
                         }
                         else if (operation === 'create') {
-                            args.data = { tenantId, ...args.data };
+                            args.data = { ...args.data, tenantId };
                         }
                         else if (operation === 'createMany') {
                             if (Array.isArray(args.data)) {
-                                args.data = args.data.map((d) => ({ tenantId, ...d }));
+                                args.data = args.data.map((d) => ({ ...d, tenantId }));
                             }
                             else {
-                                args.data = { tenantId, ...args.data };
+                                args.data = { ...args.data, tenantId };
                             }
                         }
                         else if (operation === 'upsert') {
-                            args.where = { tenantId, ...args.where };
-                            args.create = { tenantId, ...args.create };
-                            args.update = { tenantId, ...args.update };
+                            args.where = { ...args.where, tenantId };
+                            args.create = { ...args.create, tenantId };
+                            args.update = { ...args.update, tenantId };
                         }
                     }
                     return query(args);
