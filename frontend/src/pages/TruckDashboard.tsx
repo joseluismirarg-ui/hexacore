@@ -56,7 +56,10 @@ export default function TruckDashboard() {
       await api.post('/api/trucks', Object.fromEntries(formData));
       setShowTruckModal(false);
       reloadTrucks();
-    } catch (err) { console.error(err); }
+    } catch (err: any) { 
+      console.error(err);
+      alert(err.message || 'Error al guardar el camión');
+    }
   };
 
   const handleCreateDriver = async (e: React.FormEvent<HTMLFormElement>) => {

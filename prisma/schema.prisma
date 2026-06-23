@@ -103,7 +103,7 @@ model Tenant {
   // Nuevos límites y flags de SuperAdmin
   maxUsers             Int          @default(10) @map("max_users")
   maxBranches          Int          @default(1) @map("max_branches")
-  maxTrucks            Int          @default(3) @map("max_trucks")
+  maxTrucks            Int          @default(999) @map("max_trucks")
   maxStorageBytes      Int          @default(1073741824) @map("max_storage_bytes") // 1GB
   features             Json?        @default("[]") // Ej: ["IA_OPERIA", "TMS_LOGISTICS"]
   trialEndsAt          DateTime?    @map("trial_ends_at")
