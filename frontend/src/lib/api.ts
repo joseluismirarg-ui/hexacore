@@ -74,6 +74,13 @@ async function request<T>(
       }
     }
 
+    // Intercepción Global para Sesión Expirada (401 o 403 SUPABASE_AUTH_ERROR)
+    if (response.status === 401 || (response.status === 403 && json.message?.includes('SUPABASE_AUTH_ERROR'))) {
+      localStorage.removeItem('hexa_token');
+      await supabase.auth.signOut();
+      window.location.href = '/login';
+    }
+
     throw new ApiError(
       response.status,
       errorCode,
